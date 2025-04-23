@@ -7,7 +7,7 @@ const binance = axios.create({
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
-    "X-MBX-APIKEY": process.env.BINANCE_API_KEY || ""
+    "X-MBX-APIKEY": process.env.BINANCE_TESTNET_API_KEY || ""
   }
 });
 
@@ -15,7 +15,7 @@ const binance = axios.create({
 const generateSignature = (queryString: string): string => {
   const crypto = require("crypto");
   return crypto
-    .createHmac("sha256", process.env.BINANCE_API_SECRET || "")
+    .createHmac("sha256", process.env.BINANCE_TESTNET_SECRET_KEY || "")
     .update(queryString)
     .digest("hex");
 };

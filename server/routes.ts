@@ -161,45 +161,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/binance/account", async (req, res) => {
     try {
+      // Use real API with testnet credentials
       const accountInfo = await binanceApi.getAccountInfo();
       res.json(accountInfo);
     } catch (error: any) {
-      // For testnet, return mock account info
-      res.json({ 
-        availableBalance: "25438.92",
-        totalMarginBalance: "25438.92",
-        totalUnrealizedProfit: "0.00",
-        totalWalletBalance: "25438.92",
+      console.error("Error fetching account info from Binance:", error);
+      // For fallback, return safe error response
+      res.status(500).json({ 
+        error: "Unable to fetch account information",
+        message: error.message 
       });
     }
   });
   
   app.get("/api/binance/positions", async (req, res) => {
     try {
-      // Only use real API if explicitly set
-      if (process.env.USE_REAL_API === "true") {
+      // Always try to use real API with testnet credentials first
+      try {
         const positions = await binanceApi.getPositions();
-        res.json(positions);
-      } else {
-        // Get userId from session or mock for now
-        const userId = 1; // Mock user ID for demo
+        console.log('Retrieved positions from Binance API:', positions);
         
-        // Try to fetch positions from database
-        try {
-          const dbPositions = await storage.getPositions(userId);
-          if (dbPositions && dbPositions.length > 0) {
-            res.json(dbPositions);
-            return;
+        // If positions exist, store them in the database for persistence
+        if (positions && positions.length > 0) {
+          const userId = 1; // Mock user ID for demo
+          
+          // Store each position
+          for (const position of positions) {
+            try {
+              // Check if position already exists in DB
+              const dbPositions = await storage.getPositions(userId);
+              const exists = dbPositions.some(p => 
+                p.symbol === position.symbol && p.positionSide === position.positionSide
+              );
+              
+              if (!exists) {
+                const dbPosition = {
+                  userId,
+                  symbol: position.symbol,
+                  positionAmt: position.positionAmt,
+                  entryPrice: position.entryPrice,
+                  markPrice: position.markPrice,
+                  unRealizedProfit: position.unRealizedProfit,
+                  liquidationPrice: position.liquidationPrice,
+                  leverage: position.leverage,
+                  marginType: position.marginType,
+                  positionSide: position.positionSide
+                };
+                await storage.createPosition(dbPosition);
+              }
+            } catch (storeError) {
+              console.error("Error storing position in DB:", storeError);
+              // Continue with response even if DB store fails
+            }
           }
-        } catch (dbError) {
-          console.error("Error fetching positions from DB:", dbError);
-          // Fall back to mock data if DB access fails
+          
+          res.json(positions);
+          return;
         }
-        
-        // If no DB positions, fallback to mock positions
-        res.json(mockPositions);
+      } catch (apiError) {
+        console.error("Error retrieving positions from Binance API:", apiError);
+        // Fall back to DB if API fails
       }
+      
+      // If no positions from API, try to get from database
+      const userId = 1; // Mock user ID for demo
+      try {
+        const dbPositions = await storage.getPositions(userId);
+        if (dbPositions && dbPositions.length > 0) {
+          res.json(dbPositions);
+          return;
+        }
+      } catch (dbError) {
+        console.error("Error fetching positions from DB:", dbError);
+      }
+      
+      // If no positions from API or DB, return empty array
+      res.json([]);
     } catch (error: any) {
+      console.error("Error in positions endpoint:", error);
       res.status(500).json({ error: error.message });
     }
   });

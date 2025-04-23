@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Container } from "@/components/Container";
+import { Container } from "@/components/ui/container";
 import { useStrategies, useCreateStrategy, useTestStrategy } from "@/hooks/useStrategies";
 import { STRATEGY_NAMES } from "@/lib/constants";
 import { StrategyType } from "@/lib/types";

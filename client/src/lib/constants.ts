@@ -1,7 +1,7 @@
 import { StrategyType } from "./types";
 
 export const BINANCE_API_URL = "https://testnet.binancefuture.com";
-export const BINANCE_WS_URL = "wss://stream.binancefuture.com";
+export const BINANCE_WS_URL = "wss://stream.binancefuture.com"; // For testnet: "wss://stream.binancefuture.com"
 export const DEFAULT_TIMEFRAME = "4h";
 export const AVAILABLE_TIMEFRAMES = ["1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"];
 
