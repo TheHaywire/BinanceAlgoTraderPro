@@ -1,5 +1,6 @@
 import axios from "axios";
 import { BINANCE_API_URL } from "../../client/src/lib/constants";
+import crypto from "crypto";
 
 // Configure Binance API client
 const binance = axios.create({
@@ -13,7 +14,6 @@ const binance = axios.create({
 
 // Generate signature for authenticated requests
 const generateSignature = (queryString: string): string => {
-  const crypto = require("crypto");
   return crypto
     .createHmac("sha256", process.env.BINANCE_TESTNET_SECRET_KEY || "")
     .update(queryString)
