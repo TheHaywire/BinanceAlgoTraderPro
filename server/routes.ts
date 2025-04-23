@@ -23,6 +23,24 @@ let mockRiskMetrics: any = {};
 // Initialize trading data
 const initializeData = async () => {
   try {
+    // Initialize admin user if it doesn't exist
+    try {
+      const adminUser = await storage.getUserByUsername("admin");
+      
+      if (!adminUser) {
+        console.log("Creating default admin user...");
+        await storage.createUser({
+          username: "admin",
+          password: "password123", // In production, use proper hashing
+          apiKey: null,
+          apiSecret: null
+        });
+        console.log("Default admin user created");
+      }
+    } catch (userError) {
+      console.error("Error checking/creating admin user:", userError);
+    }
+    
     // Initialize mock data based on real market data
     const marketData = await binanceApi.getMarketData();
     
@@ -153,11 +171,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/binance/positions", async (req, res) => {
     try {
+      // Only use real API if explicitly set
       if (process.env.USE_REAL_API === "true") {
         const positions = await binanceApi.getPositions();
         res.json(positions);
       } else {
-        // In testnet or dev mode, use mock positions
+        // Get userId from session or mock for now
+        const userId = 1; // Mock user ID for demo
+        
+        // Try to fetch positions from database
+        try {
+          const dbPositions = await storage.getPositions(userId);
+          if (dbPositions && dbPositions.length > 0) {
+            res.json(dbPositions);
+            return;
+          }
+        } catch (dbError) {
+          console.error("Error fetching positions from DB:", dbError);
+          // Fall back to mock data if DB access fails
+        }
+        
+        // If no DB positions, fallback to mock positions
         res.json(mockPositions);
       }
     } catch (error: any) {
@@ -189,6 +223,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Update mock positions
         mockPositions = tradingEngine.updatePositions(mockPositions, simulatedOrder);
+        
+        // Store the order in the database
+        try {
+          const userId = 1; // Mock user ID for demo
+          const dbOrder = {
+            userId,
+            symbol: orderParams.symbol,
+            orderId: simulatedOrder.orderId,
+            clientOrderId: simulatedOrder.clientOrderId || `order_${Date.now()}`,
+            side: orderParams.side,
+            type: orderParams.type,
+            quantity: orderParams.quantity,
+            price: orderParams.price || null,
+            stopPrice: orderParams.stopPrice || null,
+            status: "FILLED"
+          };
+          
+          await storage.createOrder(dbOrder);
+          console.log("Order saved to database:", dbOrder.orderId);
+        } catch (dbError) {
+          console.error("Error saving order to database:", dbError);
+          // Continue with response even if DB save fails
+        }
         
         res.json(simulatedOrder);
       }
@@ -263,6 +320,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           p => !(p.symbol === symbol && p.positionSide === positionSide)
         );
         
+        // Try to delete position from database
+        try {
+          const userId = 1; // Mock user ID for demo
+          
+          // Get all positions for the user
+          const dbPositions = await storage.getPositions(userId);
+          
+          // Find positions matching the criteria
+          const positionsToDelete = dbPositions.filter(
+            p => p.symbol === symbol && p.positionSide === positionSide
+          );
+          
+          // Delete each matching position
+          for (const position of positionsToDelete) {
+            await storage.deletePosition(position.id);
+            console.log(`Position deleted from database: ${position.symbol} (ID: ${position.id})`);
+          }
+        } catch (dbError) {
+          console.error("Error deleting position from database:", dbError);
+          // Continue with response even if DB delete fails
+        }
+        
         res.json(result);
       }
     } catch (error: any) {
@@ -303,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(mockRiskMetrics);
   });
   
-  app.post("/api/binance/execute", (req, res) => {
+  app.post("/api/binance/execute", async (req, res) => {
     try {
       const { opportunityId } = req.body;
       
@@ -324,6 +403,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update mock positions
       if (result.position) {
         mockPositions.push(result.position);
+        
+        // Store position in database
+        try {
+          const userId = 1; // Mock user ID for demo
+          const dbPosition = {
+            userId,
+            symbol: result.position.symbol,
+            positionAmt: result.position.positionAmt,
+            entryPrice: result.position.entryPrice,
+            markPrice: result.position.markPrice,
+            unRealizedProfit: result.position.unRealizedProfit,
+            liquidationPrice: result.position.liquidationPrice,
+            leverage: result.position.leverage,
+            marginType: result.position.marginType,
+            positionSide: result.position.positionSide
+          };
+          
+          await storage.createPosition(dbPosition);
+          console.log("Position saved to database:", result.position.symbol);
+        } catch (dbError) {
+          console.error("Error saving position to database:", dbError);
+          // Continue with response even if DB save fails
+        }
       }
       
       // Remove the opportunity from the list
