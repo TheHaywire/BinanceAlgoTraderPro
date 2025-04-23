@@ -122,9 +122,14 @@ const broadcastToClients = (message: any) => {
   });
 };
 
+import apiRoutes from "./routes/index";
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize trading data
   await initializeData();
+  
+  // Mount API routes
+  app.use("/api/trading", apiRoutes);
   
   // Set up API routes
   app.get("/api/binance/market", async (req, res) => {
