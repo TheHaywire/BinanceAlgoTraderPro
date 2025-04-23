@@ -142,28 +142,38 @@ export default function TradingChart({
   const isPriceUp = parseFloat(priceChangePercent) >= 0;
 
   return (
-    <Card className="card-glass">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-4">
+    <Card className="premium-card overflow-hidden relative">
+      {/* Add subtle gradient overlay in top-right corner */}
+      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-glow rounded-full opacity-30 blur-xl"></div>
+      
+      <CardContent className="p-5 pb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
           <div className="flex items-center">
-            <h2 className="font-semibold text-lg">{symbol}</h2>
-            <span className={`ml-2 ${isPriceUp ? 'text-success' : 'text-danger'} text-sm`}>${price}</span>
-            <span className={`ml-2 ${isPriceUp ? 'text-success' : 'text-danger'} text-xs`}>
-              {isPriceUp ? '+' : ''}{priceChangePercent}%
-            </span>
+            <div className="flex flex-col">
+              <h2 className="font-bold text-xl">{symbol}</h2>
+              <div className="flex items-center mt-1">
+                <span className={`text-lg font-medium ${isPriceUp ? 'text-gradient-profit' : 'text-[#FF3B69]'}`}>
+                  ${price}
+                </span>
+                <span className={`ml-2 ${isPriceUp ? 'text-success' : 'text-danger'} text-xs flex items-center font-medium`}>
+                  <i className={`${isPriceUp ? 'ri-arrow-up-line' : 'ri-arrow-down-line'} mr-1`}></i>
+                  {isPriceUp ? '+' : ''}{priceChangePercent}%
+                </span>
+              </div>
+            </div>
           </div>
           
-          <div className="flex space-x-2">
-            {AVAILABLE_TIMEFRAMES.slice(3, 7).map((tf) => (
+          <div className="flex space-x-1.5">
+            {AVAILABLE_TIMEFRAMES.slice(2, 7).map((tf) => (
               <Button
                 key={tf}
                 variant={timeframe === tf ? 'default' : 'outline'} 
                 size="sm"
                 className={`
-                  px-3 py-1 text-sm
+                  px-3 py-1 text-xs font-medium
                   ${timeframe === tf 
-                    ? 'bg-primary text-white' 
-                    : 'bg-[#252D3D] text-white hover:bg-[#1C2230] border-none'}
+                    ? 'bg-gradient-to-r from-[#0095FF] to-[#0066CC] text-white border-none shadow-lg shadow-primary/20' 
+                    : 'bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] border-none'}
                 `}
                 onClick={() => onTimeframeChange(tf)}
               >
@@ -175,8 +185,11 @@ export default function TradingChart({
         
         <div 
           ref={containerRef} 
-          className="chart-area h-80 rounded-md p-3 mb-3"
+          className="chart-area h-[350px] rounded-lg p-3 mb-4 relative"
         >
+          <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-[rgba(19,23,34,0.7)] text-xs text-neutral-light">
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </div>
           <svg 
             ref={svgRef} 
             width="100%" 
@@ -187,36 +200,36 @@ export default function TradingChart({
         
         <div className="flex flex-wrap gap-2">
           <Button 
-            className="bg-success text-white hover:bg-success/90 px-4 py-1.5 rounded text-sm font-medium flex items-center"
+            className="bg-gradient-to-r from-[#00C897] to-[#00A57E] text-white hover:from-[#00A57E] hover:to-[#00C897] px-5 py-2 rounded-lg text-sm font-medium flex items-center shadow-lg shadow-success/20"
           >
-            <i className="ri-arrow-right-up-line mr-1"></i>
+            <i className="ri-arrow-right-up-line mr-1.5"></i>
             Long
           </Button>
           <Button 
-            className="bg-danger text-white hover:bg-danger/90 px-4 py-1.5 rounded text-sm font-medium flex items-center"
+            className="bg-gradient-to-r from-[#FF3B69] to-[#DB2A69] text-white hover:from-[#DB2A69] hover:to-[#FF3B69] px-5 py-2 rounded-lg text-sm font-medium flex items-center shadow-lg shadow-danger/20"
           >
-            <i className="ri-arrow-right-down-line mr-1"></i>
+            <i className="ri-arrow-right-down-line mr-1.5"></i>
             Short
           </Button>
           <Button 
             variant="outline"
-            className="bg-[#252D3D] text-white hover:bg-[#1C2230] px-4 py-1.5 rounded text-sm font-medium flex items-center border-none"
+            className="bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] px-4 py-2 rounded-lg text-sm font-medium flex items-center border-none"
           >
-            <i className="ri-tools-line mr-1"></i>
+            <i className="ri-line-chart-line mr-1.5"></i>
             Indicators
           </Button>
           <Button 
             variant="outline"
-            className="bg-[#252D3D] text-white hover:bg-[#1C2230] px-4 py-1.5 rounded text-sm font-medium flex items-center border-none"
+            className="bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] px-4 py-2 rounded-lg text-sm font-medium flex items-center border-none"
           >
-            <i className="ri-drag-move-line mr-1"></i>
+            <i className="ri-pencil-ruler-line mr-1.5"></i>
             Draw
           </Button>
           <Button 
             variant="outline"
-            className="bg-[#252D3D] text-white hover:bg-[#1C2230] px-4 py-1.5 rounded text-sm font-medium flex items-center border-none ml-auto"
+            className="bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] px-4 py-2 rounded-lg text-sm font-medium flex items-center border-none ml-auto"
           >
-            <i className="ri-fullscreen-line mr-1"></i>
+            <i className="ri-fullscreen-line mr-1.5"></i>
             Expand
           </Button>
         </div>

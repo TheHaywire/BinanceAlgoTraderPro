@@ -68,23 +68,85 @@
     @apply bg-[rgba(28,34,48,0.7)] backdrop-blur-md border border-[rgba(255,255,255,0.05)];
   }
   
-  /* Gradient Backgrounds */
+  /* Premium Gradient Backgrounds */
   .bg-gradient-dark {
     background: linear-gradient(135deg, #131722 0%, #1C2230 100%);
   }
   
-  /* Glassmorphism Cards */
-  .card-glass {
-    @apply bg-[rgba(28,34,48,0.6)] backdrop-blur-md rounded-xl border border-[rgba(255,255,255,0.05)] transition-all duration-300;
+  .bg-gradient-blue {
+    background: linear-gradient(135deg, #0F1333 0%, #1A2B60 100%);
   }
   
-  .card-glass:hover {
-    @apply bg-[rgba(28,34,48,0.75)] shadow-lg -translate-y-0.5;
+  .bg-gradient-premium {
+    background: linear-gradient(135deg, #152149 0%, #1C1635 100%);
   }
-
-  /* Chart Styles */
+  
+  .bg-gradient-glow {
+    background: radial-gradient(circle at top right, 
+      rgba(0, 149, 255, 0.1) 0%, 
+      rgba(0, 53, 91, 0.05) 40%, 
+      rgba(0, 0, 0, 0) 70%);
+  }
+  
+  /* Premium Text Gradients */
+  .text-gradient-blue {
+    background: linear-gradient(90deg, #4FBBFF 0%, #5773FF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+  }
+  
+  .text-gradient-profit {
+    background: linear-gradient(90deg, #00C897 0%, #26DEB0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+  }
+  
+  /* Premium Card Styles */
+  .card-glass {
+    @apply bg-[rgba(28,34,48,0.6)] backdrop-blur-md rounded-xl transition-all duration-300;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Glow effect on hover */
+  .card-glass:hover {
+    @apply bg-[rgba(28,34,48,0.75)] -translate-y-0.5;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 
+                0 0 64px rgba(0, 149, 255, 0.1);
+  }
+  
+  /* Add subtle gradient border */
+  .card-glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+      rgba(255,255,255,0), 
+      rgba(79,190,255,0.3), 
+      rgba(255,255,255,0));
+  }
+  
+  /* Premium Chart Styles */
   .chart-area {
-    @apply bg-[rgba(19,23,34,0.5)] border border-[rgba(255,255,255,0.05)] rounded-lg;
+    @apply bg-[rgba(19,23,34,0.5)] rounded-lg;
+    border: 1px solid rgba(73, 86, 118, 0.2);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Data card styles */
+  .premium-card {
+    @apply bg-gradient-to-br from-[#1A2035] to-[#161D2B] rounded-xl;
+    border: 1px solid rgba(73, 86, 118, 0.2);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
   }
 
   /* Custom Animation for Opportunity Score */

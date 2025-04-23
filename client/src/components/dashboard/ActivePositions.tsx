@@ -104,109 +104,145 @@ export default function ActivePositions({ positions, isLoading }: ActivePosition
 
   return (
     <>
-      <Card className="card-glass">
-        <CardContent className="p-4">
-          <h2 className="font-semibold text-lg mb-4 flex items-center">
-            <i className="ri-exchange-funds-line text-primary mr-2"></i>
-            Active Positions
-            <span className="ml-2 bg-[#252D3D] text-xs px-2 py-0.5 rounded-full">
-              {positions.length}
-            </span>
-          </h2>
+      <Card className="premium-card overflow-hidden relative">
+        {/* Add subtle gradient overlay in top-right corner */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-glow rounded-full opacity-20 blur-xl"></div>
+        
+        <CardContent className="p-5">
+          <div className="flex justify-between items-center mb-5">
+            <div className="flex items-center">
+              <div className="w-9 h-9 rounded-md bg-[rgba(28,34,48,0.6)] flex items-center justify-center mr-3">
+                <i className="ri-exchange-funds-line text-primary text-xl"></i>
+              </div>
+              <div>
+                <h2 className="font-bold text-lg">Active Positions</h2>
+                <p className="text-neutral-light text-xs mt-0.5">Currently trading on Binance Futures</p>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <span className="text-primary font-medium">{positions.length}</span>
+              <span className="text-neutral-light mx-1">/</span>
+              <span className="text-neutral-light">10</span>
+            </div>
+          </div>
           
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-5 px-5">
             {isLoading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <div className="flex flex-col justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+                <p className="text-neutral-light mt-4">Loading positions...</p>
               </div>
             ) : positions.length === 0 ? (
-              <div className="text-center py-8 text-neutral-light">
-                No active positions. Open a position to get started.
+              <div className="flex flex-col justify-center items-center py-14 text-center">
+                <div className="w-16 h-16 rounded-full bg-[rgba(28,34,48,0.6)] flex items-center justify-center mb-4">
+                  <i className="ri-bill-line text-3xl text-neutral-light opacity-50"></i>
+                </div>
+                <p className="text-neutral-light mb-2">No active positions</p>
+                <p className="text-neutral-light text-sm opacity-60 max-w-md">
+                  Open a position using the chart controls or execute a trading opportunity to get started.
+                </p>
               </div>
             ) : (
-              <table className="min-w-full">
-                <thead>
-                  <tr className="text-left text-neutral-light text-sm border-b border-gray-800">
-                    <th className="pb-3 pr-4">Pair</th>
-                    <th className="pb-3 px-4">Type</th>
-                    <th className="pb-3 px-4">Entry</th>
-                    <th className="pb-3 px-4">Current</th>
-                    <th className="pb-3 px-4">Size</th>
-                    <th className="pb-3 px-4">Leverage</th>
-                    <th className="pb-3 px-4">PnL</th>
-                    <th className="pb-3 px-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {positions.map((position) => {
-                    const symbol = position.symbol;
-                    const tickerSymbol = symbol.replace(/USDT$/, "");
-                    const positionType = parseFloat(position.positionAmt) > 0 ? "LONG" : "SHORT";
-                    const entryPrice = parseFloat(position.entryPrice);
-                    const currentPrice = parseFloat(position.markPrice);
-                    const size = Math.abs(parseFloat(position.positionAmt));
-                    const leverage = parseFloat(position.leverage);
-                    
-                    // Calculate PnL
-                    const pnl = parseFloat(position.unRealizedProfit);
-                    const pnlPercent = (pnl / (entryPrice * size / leverage)) * 100;
-                    const isProfitable = pnl >= 0;
+              <div className="rounded-xl overflow-hidden border border-[rgba(73,86,118,0.1)]">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="text-left bg-[rgba(28,34,48,0.5)]">
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Asset</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Type</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Entry</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Current</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Size</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Leverage</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">PnL</th>
+                      <th className="py-3 px-4 text-xs font-medium text-neutral-light">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm divide-y divide-[rgba(73,86,118,0.1)]">
+                    {positions.map((position) => {
+                      const symbol = position.symbol;
+                      const tickerSymbol = symbol.replace(/USDT$/, "");
+                      const positionType = parseFloat(position.positionAmt) > 0 ? "LONG" : "SHORT";
+                      const entryPrice = parseFloat(position.entryPrice);
+                      const currentPrice = parseFloat(position.markPrice);
+                      const size = Math.abs(parseFloat(position.positionAmt));
+                      const leverage = parseFloat(position.leverage);
+                      
+                      // Calculate PnL
+                      const pnl = parseFloat(position.unRealizedProfit);
+                      const pnlPercent = (pnl / (entryPrice * size / leverage)) * 100;
+                      const isProfitable = pnl >= 0;
 
-                    return (
-                      <tr key={`${symbol}-${positionType}`} className="border-b border-gray-800 hover:bg-[#252D3D]">
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center">
-                            <div className="w-6 h-6 rounded-full overflow-hidden bg-neutral-dark flex items-center justify-center mr-2">
-                              <span className="font-semibold text-xs">{tickerSymbol}</span>
+                      return (
+                        <tr key={`${symbol}-${positionType}`} className="hover:bg-[rgba(28,34,48,0.3)] transition-colors duration-150">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#2A3961] to-[#192041] flex items-center justify-center mr-3 shadow-lg">
+                                <span className="font-bold text-xs">{tickerSymbol.substring(0, 3)}</span>
+                              </div>
+                              <span className="font-medium">{symbol}</span>
                             </div>
-                            <span className="font-medium">{symbol}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`inline-flex items-center ${
-                            positionType === "LONG" ? "bg-success bg-opacity-20 text-success" : "bg-danger bg-opacity-20 text-danger"
-                          } px-2 py-0.5 rounded`}>
-                            <i className={`${
-                              positionType === "LONG" ? "ri-arrow-right-up-line" : "ri-arrow-right-down-line"
-                            } mr-1`}></i>
-                            {positionType}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-mono">${entryPrice.toFixed(2)}</td>
-                        <td className="py-3 px-4 font-mono">${currentPrice.toFixed(2)}</td>
-                        <td className="py-3 px-4 font-mono">{size.toFixed(4)} {tickerSymbol}</td>
-                        <td className="py-3 px-4 font-mono">
-                          <span className="bg-primary bg-opacity-20 text-primary px-2 py-0.5 rounded">{leverage}x</span>
-                        </td>
-                        <td className={`py-3 px-4 font-mono ${isProfitable ? "text-success" : "text-danger"}`}>
-                          {isProfitable ? "+" : ""}{pnl.toFixed(2)} ({isProfitable ? "+" : ""}{pnlPercent.toFixed(2)}%)
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="bg-primary px-2 py-1 text-xs hover:bg-primary/90"
-                              onClick={() => handleTpslClick(position)}
-                            >
-                              TP/SL
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="bg-danger px-2 py-1 text-xs hover:bg-danger/90"
-                              onClick={() => handleClosePosition(position)}
-                              disabled={closePositionMutation.isPending}
-                            >
-                              Close
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                              positionType === "LONG" 
+                                ? "bg-gradient-to-r from-[rgba(0,200,151,0.1)] to-[rgba(0,155,117,0.2)] text-[#00C897]" 
+                                : "bg-gradient-to-r from-[rgba(255,59,105,0.1)] to-[rgba(219,42,105,0.2)] text-[#FF3B69]"
+                            }`}>
+                              <i className={`${
+                                positionType === "LONG" ? "ri-arrow-up-line" : "ri-arrow-down-line"
+                              } mr-1`}></i>
+                              {positionType}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 font-mono">${parseFloat(entryPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="py-4 px-4 font-mono">${parseFloat(currentPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className="py-4 px-4 font-mono">
+                            <span className="bg-[rgba(28,34,48,0.4)] px-2 py-1 rounded">
+                              {parseFloat(size).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="bg-gradient-to-r from-[rgba(0,149,255,0.1)] to-[rgba(0,102,204,0.2)] text-primary px-3 py-1 rounded-md font-medium">
+                              {leverage}x
+                            </span>
+                          </td>
+                          <td className={`py-4 px-4 font-mono ${isProfitable ? "text-[#00C897]" : "text-[#FF3B69]"}`}>
+                            <div className="flex flex-col">
+                              <span className="font-bold">
+                                {isProfitable ? "+" : ""}{parseFloat(pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-xs opacity-80">
+                                ({isProfitable ? "+" : ""}{pnlPercent.toFixed(2)}%)
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="bg-gradient-to-r from-[#0095FF] to-[#0066CC] text-white hover:from-[#0066CC] hover:to-[#0095FF] px-3 py-1.5 rounded-md text-xs shadow-lg shadow-primary/20 font-medium"
+                                onClick={() => handleTpslClick(position)}
+                              >
+                                TP/SL
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="bg-gradient-to-r from-[#FF3B69] to-[#DB2A69] text-white hover:from-[#DB2A69] hover:to-[#FF3B69] px-3 py-1.5 rounded-md text-xs shadow-lg shadow-danger/20 font-medium"
+                                onClick={() => handleClosePosition(position)}
+                                disabled={closePositionMutation.isPending}
+                              >
+                                {closePositionMutation.isPending ? "Closing..." : "Close"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </CardContent>
@@ -214,59 +250,113 @@ export default function ActivePositions({ positions, isLoading }: ActivePosition
 
       {/* Take Profit / Stop Loss Dialog */}
       <Dialog open={tpslDialogOpen} onOpenChange={setTpslDialogOpen}>
-        <DialogContent className="bg-[#1C2230] border border-gray-800">
+        <DialogContent className="bg-gradient-premium border border-[rgba(73,86,118,0.2)] shadow-xl rounded-xl overflow-hidden max-w-md">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-glow rounded-full opacity-30 blur-xl"></div>
+          
           <DialogHeader>
-            <DialogTitle>Set Take Profit / Stop Loss</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl font-bold text-gradient-blue">Set Take Profit / Stop Loss</DialogTitle>
+            <DialogDescription className="text-neutral-light opacity-80">
               {selectedPosition && (
-                <span>
-                  Configure TP/SL for {selectedPosition.symbol} {parseFloat(selectedPosition.positionAmt) > 0 ? "LONG" : "SHORT"} position
-                </span>
+                <div className="flex items-center mt-2">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-[#2A3961] to-[#192041] flex items-center justify-center mr-2">
+                    <span className="font-bold text-xs">{selectedPosition.symbol.replace(/USDT$/, "").substring(0, 3)}</span>
+                  </div>
+                  <span className="font-medium">
+                    {selectedPosition.symbol} 
+                    <span className={`${parseFloat(selectedPosition.positionAmt) > 0 ? 'text-[#00C897]' : 'text-[#FF3B69]'} ml-2`}>
+                      {parseFloat(selectedPosition.positionAmt) > 0 ? "LONG" : "SHORT"}
+                    </span>
+                  </span>
+                </div>
               )}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="takeProfit" className="text-right">Take Profit</Label>
-              <Input
-                id="takeProfit"
-                type="number"
-                step="0.01"
-                placeholder="Price"
-                value={takeProfit}
-                onChange={(e) => setTakeProfit(e.target.value)}
-                className="col-span-3 bg-[#131722] border-gray-700"
-              />
+          <div className="grid gap-6 py-6">
+            <div className="space-y-2">
+              <Label htmlFor="takeProfit" className="text-sm font-medium flex items-center">
+                <div className="w-6 h-6 rounded-md bg-[rgba(0,200,151,0.1)] flex items-center justify-center mr-2">
+                  <i className="ri-arrow-up-line text-[#00C897]"></i>
+                </div>
+                Take Profit Price
+              </Label>
+              <div className="relative">
+                <Input
+                  id="takeProfit"
+                  type="number"
+                  step="0.01"
+                  placeholder="Enter TP price"
+                  value={takeProfit}
+                  onChange={(e) => setTakeProfit(e.target.value)}
+                  className="bg-[rgba(19,23,34,0.5)] border-[rgba(73,86,118,0.2)] rounded-md h-11 pl-4 pr-14"
+                />
+                <div className="absolute right-3 top-2.5 text-neutral-light opacity-60 text-sm font-mono">
+                  USDT
+                </div>
+              </div>
+              {selectedPosition && takeProfit && (
+                <div className="text-xs text-[#00C897] flex items-center mt-1">
+                  <i className="ri-information-line mr-1"></i>
+                  {parseFloat(selectedPosition.positionAmt) > 0 ? 
+                    `+${((parseFloat(takeProfit) - parseFloat(selectedPosition.entryPrice)) / parseFloat(selectedPosition.entryPrice) * 100).toFixed(2)}% profit` :
+                    `+${((parseFloat(selectedPosition.entryPrice) - parseFloat(takeProfit)) / parseFloat(selectedPosition.entryPrice) * 100).toFixed(2)}% profit`
+                  }
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="stopLoss" className="text-right">Stop Loss</Label>
-              <Input
-                id="stopLoss"
-                type="number"
-                step="0.01"
-                placeholder="Price"
-                value={stopLoss}
-                onChange={(e) => setStopLoss(e.target.value)}
-                className="col-span-3 bg-[#131722] border-gray-700"
-              />
+            
+            <div className="space-y-2">
+              <Label htmlFor="stopLoss" className="text-sm font-medium flex items-center">
+                <div className="w-6 h-6 rounded-md bg-[rgba(255,59,105,0.1)] flex items-center justify-center mr-2">
+                  <i className="ri-arrow-down-line text-[#FF3B69]"></i>
+                </div>
+                Stop Loss Price
+              </Label>
+              <div className="relative">
+                <Input
+                  id="stopLoss"
+                  type="number"
+                  step="0.01"
+                  placeholder="Enter SL price"
+                  value={stopLoss}
+                  onChange={(e) => setStopLoss(e.target.value)}
+                  className="bg-[rgba(19,23,34,0.5)] border-[rgba(73,86,118,0.2)] rounded-md h-11 pl-4 pr-14"
+                />
+                <div className="absolute right-3 top-2.5 text-neutral-light opacity-60 text-sm font-mono">
+                  USDT
+                </div>
+              </div>
+              {selectedPosition && stopLoss && (
+                <div className="text-xs text-[#FF3B69] flex items-center mt-1">
+                  <i className="ri-information-line mr-1"></i>
+                  {parseFloat(selectedPosition.positionAmt) > 0 ? 
+                    `-${((parseFloat(selectedPosition.entryPrice) - parseFloat(stopLoss)) / parseFloat(selectedPosition.entryPrice) * 100).toFixed(2)}% loss` :
+                    `-${((parseFloat(stopLoss) - parseFloat(selectedPosition.entryPrice)) / parseFloat(selectedPosition.entryPrice) * 100).toFixed(2)}% loss`
+                  }
+                </div>
+              )}
             </div>
           </div>
           
           <DialogFooter>
             <Button 
               variant="outline" 
-              className="bg-[#252D3D] hover:bg-[#1C2230] border-none"
+              className="bg-[rgba(28,34,48,0.5)] hover:bg-[rgba(28,34,48,0.7)] text-white border-none rounded-md h-10"
               onClick={() => setTpslDialogOpen(false)}
             >
               Cancel
             </Button>
             <Button 
-              className="bg-primary hover:bg-primary/90"
+              className="bg-gradient-to-r from-[#0095FF] to-[#0066CC] text-white hover:from-[#0066CC] hover:to-[#0095FF] rounded-md h-10 shadow-lg shadow-primary/20 border-none"
               onClick={handleSetTpsl}
               disabled={setTpslMutation.isPending}
             >
-              {setTpslMutation.isPending ? "Setting..." : "Set TP/SL"}
+              {setTpslMutation.isPending ? (
+                <div className="flex items-center">
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Setting...
+                </div>
+              ) : "Confirm Settings"}
             </Button>
           </DialogFooter>
         </DialogContent>
