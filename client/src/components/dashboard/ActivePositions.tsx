@@ -552,37 +552,66 @@ export default function ActivePositions({ positions, isLoading }: ActivePosition
               <div className="mt-6 p-4 bg-[rgba(10,13,23,0.5)] rounded-xl border border-[rgba(73,86,118,0.15)]">
                 <h4 className="text-sm font-medium mb-3 flex items-center">
                   <i className="ri-shield-check-line text-primary mr-1.5"></i>
-                  Risk/Reward Analysis
+                  Risk Analysis
                 </h4>
                 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-xs text-neutral-light/70 mb-1">Risk/Reward Ratio</div>
                     <div className="font-medium text-sm">
-                      {parseFloat(selectedPosition.positionAmt) > 0
-                        ? (Math.abs((parseFloat(takeProfit) - parseFloat(selectedPosition.entryPrice)) / (parseFloat(selectedPosition.entryPrice) - parseFloat(stopLoss)))).toFixed(2)
-                        : (Math.abs((parseFloat(selectedPosition.entryPrice) - parseFloat(takeProfit)) / (parseFloat(stopLoss) - parseFloat(selectedPosition.entryPrice)))).toFixed(2)
-                      } : 1
+                      {(() => {
+                        const posAmt = parseFloat(selectedPosition.positionAmt);
+                        const entryPrice = parseFloat(selectedPosition.entryPrice);
+                        const tp = parseFloat(takeProfit);
+                        const sl = parseFloat(stopLoss);
+                        
+                        if (posAmt > 0) {
+                          // Long position
+                          return (Math.abs((tp - entryPrice) / (entryPrice - sl))).toFixed(2);
+                        } else {
+                          // Short position
+                          return (Math.abs((entryPrice - tp) / (sl - entryPrice))).toFixed(2);
+                        }
+                      })()}
+                      : 1
                     </div>
                   </div>
                   
                   <div>
                     <div className="text-xs text-neutral-light/70 mb-1">Potential Profit</div>
                     <div className="font-medium text-sm text-[#00C897]">
-                      ${parseFloat(selectedPosition.positionAmt) > 0
-                        ? (Math.abs(parseFloat(selectedPosition.positionAmt)) * (parseFloat(takeProfit) - parseFloat(selectedPosition.entryPrice))).toFixed(2)
-                        : (Math.abs(parseFloat(selectedPosition.positionAmt)) * (parseFloat(selectedPosition.entryPrice) - parseFloat(takeProfit))).toFixed(2)
-                      }
+                      ${(() => {
+                        const posAmt = parseFloat(selectedPosition.positionAmt);
+                        const entryPrice = parseFloat(selectedPosition.entryPrice);
+                        const tp = parseFloat(takeProfit);
+                        
+                        if (posAmt > 0) {
+                          // Long position profit
+                          return (Math.abs(posAmt) * (tp - entryPrice)).toFixed(2);
+                        } else {
+                          // Short position profit
+                          return (Math.abs(posAmt) * (entryPrice - tp)).toFixed(2);
+                        }
+                      })()}
                     </div>
                   </div>
                   
                   <div>
                     <div className="text-xs text-neutral-light/70 mb-1">Potential Loss</div>
                     <div className="font-medium text-sm text-[#FF3B69]">
-                      ${parseFloat(selectedPosition.positionAmt) > 0
-                        ? (Math.abs(parseFloat(selectedPosition.positionAmt)) * (parseFloat(selectedPosition.entryPrice) - parseFloat(stopLoss))).toFixed(2)
-                        : (Math.abs(parseFloat(selectedPosition.positionAmt)) * (parseFloat(stopLoss) - parseFloat(selectedPosition.entryPrice))).toFixed(2)
-                      }
+                      ${(() => {
+                        const posAmt = parseFloat(selectedPosition.positionAmt);
+                        const entryPrice = parseFloat(selectedPosition.entryPrice);
+                        const sl = parseFloat(stopLoss);
+                        
+                        if (posAmt > 0) {
+                          // Long position loss
+                          return (Math.abs(posAmt) * (entryPrice - sl)).toFixed(2);
+                        } else {
+                          // Short position loss
+                          return (Math.abs(posAmt) * (sl - entryPrice)).toFixed(2);
+                        }
+                      })()}
                     </div>
                   </div>
                 </div>
