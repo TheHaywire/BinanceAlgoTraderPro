@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 223 20% 15%;
+  --foreground: 0 0% 98%;
+  --muted: 210 10% 20%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 223 20% 15%;
+  --popover-foreground: 0 0% 98%;
+  --card: 224 23% 18%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 6% 25%;
+  --input: 240 6% 25%;
+  --primary: 207 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 212 25% 22%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 212 25% 22%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 341 88% 61%;
+  --destructive-foreground: 0 0% 98%;
+  --success: 162 100% 39%;
+  --success-foreground: 0 0% 98%;
+  --ring: 207 100% 50%;
+  --radius: 0.5rem;
+
+  --chart-1: 207 100% 50%;
+  --chart-2: 162 100% 39%;
+  --chart-3: 341 88% 61%;
+  --chart-4: 262 100% 60%;
+  --chart-5: 42 100% 50%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-[#131722] text-foreground;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-[#131722];
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#252D3D] rounded-sm;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary;
+  }
+}
+
+@layer components {
+  /* Glass Effect */
+  .glass {
+    @apply bg-[rgba(28,34,48,0.7)] backdrop-blur-md border border-[rgba(255,255,255,0.05)];
+  }
+  
+  /* Gradient Backgrounds */
+  .bg-gradient-dark {
+    background: linear-gradient(135deg, #131722 0%, #1C2230 100%);
+  }
+  
+  /* Glassmorphism Cards */
+  .card-glass {
+    @apply bg-[rgba(28,34,48,0.6)] backdrop-blur-md rounded-xl border border-[rgba(255,255,255,0.05)] transition-all duration-300;
+  }
+  
+  .card-glass:hover {
+    @apply bg-[rgba(28,34,48,0.75)] shadow-lg -translate-y-0.5;
+  }
+
+  /* Chart Styles */
+  .chart-area {
+    @apply bg-[rgba(19,23,34,0.5)] border border-[rgba(255,255,255,0.05)] rounded-lg;
+  }
+
+  /* Custom Animation for Opportunity Score */
+  @keyframes score-fill {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+  
+  .score-fill {
+    animation: score-fill 1s ease-out forwards;
+  }
+}
