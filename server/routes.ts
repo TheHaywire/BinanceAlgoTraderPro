@@ -379,8 +379,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(mockOpportunities);
   });
   
-  app.get("/api/binance/performance", (req, res) => {
-    res.json(mockPerformanceMetrics);
+  app.get("/api/binance/performance", async (req, res) => {
+    try {
+      // Try to get performance metrics from database first
+      const userId = 1; // Mock user ID for demo
+      
+      const dbMetrics = await storage.getPerformanceMetrics(userId);
+      
+      if (dbMetrics) {
+        // If found in DB, return those metrics
+        res.json({
+          ...mockPerformanceMetrics, // For backwards compatibility with fields not in DB
+          ...dbMetrics,
+          // Format fields for frontend consistency
+          portfolioValue: dbMetrics.portfolioValue,
+          dailyPnL: dbMetrics.dailyPnL,
+          weeklyPnL: dbMetrics.weeklyPnL,
+          totalTrades: dbMetrics.totalTrades,
+          winningTrades: dbMetrics.winningTrades,
+          losingTrades: dbMetrics.losingTrades,
+          winRate: dbMetrics.winRate,
+          maxDrawdown: dbMetrics.maxDrawdown,
+          sharpeRatio: dbMetrics.sharpeRatio
+        });
+      } else {
+        // If not found, return mock data
+        res.json(mockPerformanceMetrics);
+      }
+    } catch (error) {
+      console.error("Error fetching performance metrics:", error);
+      // Fallback to mock data on error
+      res.json(mockPerformanceMetrics);
+    }
   });
   
   app.get("/api/binance/risk", (req, res) => {

@@ -46,6 +46,17 @@ export interface Position {
 // Trading types
 export type StrategyType = 'MOMENTUM_BREAKOUT' | 'MEAN_REVERSION' | 'VOLATILITY_EXPANSION' | 'LIQUIDATION_CASCADE' | 'FUNDING_ARBITRAGE';
 
+export interface Strategy {
+  id: number;
+  userId: number;
+  name: string;
+  type: string;
+  params: any;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TradingOpportunity {
   id: string;
   symbol: string;
