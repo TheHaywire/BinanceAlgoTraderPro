@@ -142,54 +142,120 @@ export default function TradingChart({
   const isPriceUp = parseFloat(priceChangePercent) >= 0;
 
   return (
-    <Card className="premium-card overflow-hidden relative">
-      {/* Add subtle gradient overlay in top-right corner */}
-      <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-glow rounded-full opacity-30 blur-xl"></div>
+    <div className="card-chart">
+      {/* Subtle animated gradient overlay for visual depth */}
+      <div className="absolute top-0 right-0 w-full h-80 bg-gradient-glow opacity-20 blur-2xl"></div>
       
-      <CardContent className="p-5 pb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-          <div className="flex items-center">
-            <div className="flex flex-col">
-              <h2 className="font-bold text-xl">{symbol}</h2>
-              <div className="flex items-center mt-1">
-                <span className={`text-lg font-medium ${isPriceUp ? 'text-gradient-profit' : 'text-[#FF3B69]'}`}>
-                  ${price}
-                </span>
-                <span className={`ml-2 ${isPriceUp ? 'text-success' : 'text-danger'} text-xs flex items-center font-medium`}>
-                  <i className={`${isPriceUp ? 'ri-arrow-up-line' : 'ri-arrow-down-line'} mr-1`}></i>
-                  {isPriceUp ? '+' : ''}{priceChangePercent}%
-                </span>
+      <div className="p-6 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Symbol and Price Information */}
+            <div className="bg-[rgba(14,18,28,0.4)] p-3 rounded-xl border border-[rgba(73,86,118,0.15)] shadow-lg flex items-center">
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#162253] to-[#0C1333] flex items-center justify-center mr-3 shadow-inner">
+                <span className="font-bold text-gradient-blue">{symbol.replace('USDT', '')}</span>
+              </div>
+              <div>
+                <div className="flex items-baseline mb-0.5">
+                  <span className="font-mono text-lg font-bold tracking-tight">${parseFloat(price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                  <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-medium flex items-center ${
+                    isPriceUp ? 'bg-[rgba(0,200,151,0.1)] text-[#00C897]' : 'bg-[rgba(255,59,105,0.1)] text-[#FF3B69]'
+                  }`}>
+                    <i className={`${isPriceUp ? 'ri-arrow-up-line' : 'ri-arrow-down-line'} mr-0.5`}></i>
+                    {isPriceUp ? '+' : ''}{priceChangePercent}%
+                  </span>
+                </div>
+                <div className="text-xs text-neutral-light">Binance Futures</div>
+              </div>
+            </div>
+            
+            {/* Market Stats Pills */}
+            <div className="flex space-x-2 self-start sm:self-center">
+              <div className="premium-tag premium-tag-primary flex items-center">
+                <i className="ri-line-chart-line mr-1.5 text-[#4FBBFF]"></i>
+                24h Vol: $143.2M
+              </div>
+              <div className="premium-tag flex items-center">
+                <i className="ri-funds-box-line mr-1.5 text-neutral-light"></i>
+                OI: $1.87B
               </div>
             </div>
           </div>
           
-          <div className="flex space-x-1.5">
-            {AVAILABLE_TIMEFRAMES.slice(2, 7).map((tf) => (
-              <Button
+          {/* Timeframe Selector */}
+          <div className="bg-[rgba(14,18,28,0.4)] p-1.5 rounded-xl border border-[rgba(73,86,118,0.15)] self-start flex">
+            {AVAILABLE_TIMEFRAMES.slice(1, 7).map((tf) => (
+              <button
                 key={tf}
-                variant={timeframe === tf ? 'default' : 'outline'} 
-                size="sm"
                 className={`
-                  px-3 py-1 text-xs font-medium
+                  px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-300
                   ${timeframe === tf 
-                    ? 'bg-gradient-to-r from-[#0095FF] to-[#0066CC] text-white border-none shadow-lg shadow-primary/20' 
-                    : 'bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] border-none'}
+                    ? 'bg-gradient-to-r from-[#0066CC] to-[#0095FF] text-white shadow-lg shadow-primary/15' 
+                    : 'text-neutral-light hover:bg-[rgba(28,34,48,0.5)]'}
                 `}
                 onClick={() => onTimeframeChange(tf)}
               >
                 {tf}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
         
+        {/* Tools Row */}
+        <div className="flex items-center mb-4 flex-wrap gap-1.5 sm:gap-0">
+          <div className="bg-[rgba(14,18,28,0.4)] p-1.5 rounded-xl border border-[rgba(73,86,118,0.15)] flex mr-auto">
+            <button className="icon-button h-8 w-8 bg-[rgba(0,149,255,0.1)] border-[rgba(0,149,255,0.2)] text-[#4FBBFF]">
+              <i className="ri-line-chart-line"></i>
+            </button>
+            <button className="icon-button h-8 w-8">
+              <i className="ri-bar-chart-2-line"></i>
+            </button>
+            <button className="icon-button h-8 w-8">
+              <i className="ri-bubble-chart-line"></i>
+            </button>
+            <button className="icon-button h-8 w-8">
+              <i className="ri-ruler-line"></i>
+            </button>
+          </div>
+          
+          <div className="bg-[rgba(14,18,28,0.4)] p-1.5 rounded-xl border border-[rgba(73,86,118,0.15)] flex">
+            <button className="icon-button h-8 w-8">
+              <i className="ri-add-line"></i>
+            </button>
+            <button className="icon-button h-8 w-8">
+              <i className="ri-subtract-line"></i>
+            </button>
+            <button className="icon-button h-8 w-8">
+              <i className="ri-fullscreen-line"></i>
+            </button>
+            <button className="icon-button h-8 w-8">
+              <i className="ri-settings-3-line"></i>
+            </button>
+          </div>
+        </div>
+        
+        {/* Chart Container */}
         <div 
           ref={containerRef} 
-          className="chart-area h-[350px] rounded-lg p-3 mb-4 relative"
+          className="chart-area h-[380px] rounded-xl p-3 mb-5 relative"
         >
-          <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-[rgba(19,23,34,0.7)] text-xs text-neutral-light">
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          {/* Date Display */}
+          <div className="absolute top-3 left-3 px-3 py-1.5 rounded-lg bg-[rgba(12,15,23,0.7)] text-xs text-neutral-light flex items-center border border-[rgba(73,86,118,0.15)]">
+            <i className="ri-calendar-line mr-1.5"></i>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
+          
+          {/* Chart Legend */}
+          <div className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-[rgba(12,15,23,0.7)] text-xs flex items-center space-x-3 border border-[rgba(73,86,118,0.15)]">
+            <div className="flex items-center">
+              <div className="h-2 w-2 bg-[#4FBBFF] rounded-full mr-1.5"></div>
+              <span className="text-neutral-light">Price</span>
+            </div>
+            <div className="flex items-center">
+              <div className="h-2 w-2 bg-[#00C897] rounded-full mr-1.5"></div>
+              <span className="text-neutral-light">Volume</span>
+            </div>
+          </div>
+          
           <svg 
             ref={svgRef} 
             width="100%" 
@@ -198,42 +264,93 @@ export default function TradingChart({
           ></svg>
         </div>
         
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            className="bg-gradient-to-r from-[#00C897] to-[#00A57E] text-white hover:from-[#00A57E] hover:to-[#00C897] px-5 py-2 rounded-lg text-sm font-medium flex items-center shadow-lg shadow-success/20"
-          >
-            <i className="ri-arrow-right-up-line mr-1.5"></i>
-            Long
-          </Button>
-          <Button 
-            className="bg-gradient-to-r from-[#FF3B69] to-[#DB2A69] text-white hover:from-[#DB2A69] hover:to-[#FF3B69] px-5 py-2 rounded-lg text-sm font-medium flex items-center shadow-lg shadow-danger/20"
-          >
-            <i className="ri-arrow-right-down-line mr-1.5"></i>
-            Short
-          </Button>
-          <Button 
-            variant="outline"
-            className="bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] px-4 py-2 rounded-lg text-sm font-medium flex items-center border-none"
-          >
-            <i className="ri-line-chart-line mr-1.5"></i>
-            Indicators
-          </Button>
-          <Button 
-            variant="outline"
-            className="bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] px-4 py-2 rounded-lg text-sm font-medium flex items-center border-none"
-          >
-            <i className="ri-pencil-ruler-line mr-1.5"></i>
-            Draw
-          </Button>
-          <Button 
-            variant="outline"
-            className="bg-[rgba(28,34,48,0.5)] text-white hover:bg-[rgba(28,34,48,0.7)] px-4 py-2 rounded-lg text-sm font-medium flex items-center border-none ml-auto"
-          >
-            <i className="ri-fullscreen-line mr-1.5"></i>
-            Expand
-          </Button>
+        {/* Trading Actions */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Long Action Card */}
+          <div className="bg-gradient-profit rounded-xl border border-[rgba(0,200,151,0.15)] p-4">
+            <div className="flex justify-between mb-3">
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-lg bg-[rgba(0,200,151,0.1)] flex items-center justify-center mr-2">
+                  <i className="ri-arrow-up-line text-[#00C897]"></i>
+                </div>
+                <span className="font-medium">Long Position</span>
+              </div>
+              <div className="premium-tag premium-tag-success text-xs">
+                Margin: $1,250
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="bg-[rgba(12,15,23,0.3)] rounded-lg p-2">
+                <div className="text-xs text-neutral-light mb-1">Entry Price</div>
+                <div className="font-mono font-medium">${(parseFloat(price) * 0.999).toFixed(2)}</div>
+              </div>
+              <div className="bg-[rgba(12,15,23,0.3)] rounded-lg p-2">
+                <div className="text-xs text-neutral-light mb-1">Leverage</div>
+                <select className="w-full bg-transparent border-none text-white font-medium focus:ring-0 p-0 h-6">
+                  <option>5x</option>
+                  <option>10x</option>
+                  <option>20x</option>
+                </select>
+              </div>
+              <div className="bg-[rgba(12,15,23,0.3)] rounded-lg p-2">
+                <div className="text-xs text-neutral-light mb-1">Size (USDT)</div>
+                <input className="w-full bg-transparent border-none text-white font-medium focus:ring-0 p-0 h-6" 
+                  defaultValue="250" />
+              </div>
+            </div>
+            
+            <Button 
+              className="w-full bg-gradient-to-r from-[#00C897] to-[#00A57E] text-white hover:from-[#00A57E] hover:to-[#00C897] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center shadow-lg shadow-success/20"
+            >
+              <i className="ri-arrow-right-up-line mr-1.5"></i>
+              Open Long Position
+            </Button>
+          </div>
+          
+          {/* Short Action Card */}
+          <div className="bg-gradient-loss rounded-xl border border-[rgba(255,59,105,0.15)] p-4">
+            <div className="flex justify-between mb-3">
+              <div className="flex items-center">
+                <div className="h-8 w-8 rounded-lg bg-[rgba(255,59,105,0.1)] flex items-center justify-center mr-2">
+                  <i className="ri-arrow-down-line text-[#FF3B69]"></i>
+                </div>
+                <span className="font-medium">Short Position</span>
+              </div>
+              <div className="premium-tag premium-tag-danger text-xs">
+                Margin: $1,250
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <div className="bg-[rgba(12,15,23,0.3)] rounded-lg p-2">
+                <div className="text-xs text-neutral-light mb-1">Entry Price</div>
+                <div className="font-mono font-medium">${(parseFloat(price) * 1.001).toFixed(2)}</div>
+              </div>
+              <div className="bg-[rgba(12,15,23,0.3)] rounded-lg p-2">
+                <div className="text-xs text-neutral-light mb-1">Leverage</div>
+                <select className="w-full bg-transparent border-none text-white font-medium focus:ring-0 p-0 h-6">
+                  <option>5x</option>
+                  <option>10x</option>
+                  <option>20x</option>
+                </select>
+              </div>
+              <div className="bg-[rgba(12,15,23,0.3)] rounded-lg p-2">
+                <div className="text-xs text-neutral-light mb-1">Size (USDT)</div>
+                <input className="w-full bg-transparent border-none text-white font-medium focus:ring-0 p-0 h-6" 
+                  defaultValue="250" />
+              </div>
+            </div>
+            
+            <Button 
+              className="w-full bg-gradient-to-r from-[#FF3B69] to-[#DB2A69] text-white hover:from-[#DB2A69] hover:to-[#FF3B69] py-2.5 rounded-lg text-sm font-medium flex items-center justify-center shadow-lg shadow-danger/20"
+            >
+              <i className="ri-arrow-right-down-line mr-1.5"></i>
+              Open Short Position
+            </Button>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
