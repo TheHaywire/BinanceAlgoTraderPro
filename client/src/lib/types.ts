@@ -1,16 +1,62 @@
-// API and market data types
+// Strategy types
+export type StrategyType = 
+  | 'momentumBreakout'
+  | 'meanReversion'
+  | 'volatilityExpansion' 
+  | 'liquidationCascade'
+  | 'fundingRateArbitrage';
+
+// Position types
+export interface Position {
+  symbol: string;
+  positionAmt: string;
+  entryPrice: string;
+  markPrice: string;
+  unRealizedProfit: string;
+  liquidationPrice: string;
+  leverage: string;
+  maxNotionalValue: string;
+  marginType: string;
+  positionSide: string;
+  notional: string;
+  isolatedWallet: string;
+  updateTime: number;
+  breakEvenPrice?: string;
+  marginCallPrice?: string;
+  createdAt?: string;
+  userId?: number;
+}
+
+// Trading opportunity
+export interface TradingOpportunity {
+  id: string;
+  symbol: string;
+  strategy: StrategyType;
+  direction: 'LONG' | 'SHORT';
+  entryPrice: string;
+  targetPrice: string;
+  stopLoss: string;
+  riskRewardRatio: number;
+  signalTime: string;
+  confidence: number;
+  score: number;
+  description: string;
+  createdAt?: string;
+}
+
+// Market data
 export interface MarketData {
   symbol: string;
   price: string;
   priceChangePercent: string;
   volume: string;
+  high: string;
+  low: string;
   quoteVolume: string;
-  openTime: number;
-  closeTime: number;
-  highPrice: string;
-  lowPrice: string;
+  count: number;
 }
 
+// Candle data
 export interface Candle {
   openTime: number;
   open: string;
@@ -19,113 +65,102 @@ export interface Candle {
   close: string;
   volume: string;
   closeTime: number;
-  quoteVolume: string;
-  trades: number;
-  takerBuyBaseVolume: string;
-  takerBuyQuoteVolume: string;
+  quoteAssetVolume: string;
+  numberOfTrades: number;
+  takerBuyBaseAssetVolume: string;
+  takerBuyQuoteAssetVolume: string;
+  ignored: string;
 }
 
-export interface Position {
-  id: string;
-  symbol: string;
-  positionAmt: string;
-  entryPrice: string;
-  markPrice: string;
-  unRealizedProfit: string;
-  liquidationPrice: string;
-  leverage: string;
-  marginType: string;
-  isolatedMargin: string;
-  isAutoAddMargin: string;
-  positionSide: 'LONG' | 'SHORT' | 'BOTH';
-  notional: string;
-  isolatedWallet: string;
-  updateTime: number;
-}
-
-// Trading types
-export type StrategyType = 'MOMENTUM_BREAKOUT' | 'MEAN_REVERSION' | 'VOLATILITY_EXPANSION' | 'LIQUIDATION_CASCADE' | 'FUNDING_ARBITRAGE';
-
-export interface Strategy {
+// Order types
+export interface Order {
   id: number;
-  userId: number;
-  name: string;
-  type: string;
-  params: any;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TradingOpportunity {
-  id: string;
   symbol: string;
-  strategy: StrategyType;
-  direction: 'LONG' | 'SHORT';
-  entryPriceMin: string;
-  entryPriceMax: string;
-  targetPrice: string;
-  stopLoss: string;
-  score: number;
-  detectedAt: number;
+  orderId: string;
+  clientOrderId: string;
+  price: string;
+  origQty: string;
+  executedQty: string;
+  status: string;
+  timeInForce: string;
+  type: string;
+  side: string;
+  stopPrice: string;
+  time: number;
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: number;
 }
 
+// For execution
 export interface ExecutionOrder {
   symbol: string;
   side: 'BUY' | 'SELL';
-  type: 'LIMIT' | 'MARKET' | 'STOP' | 'TAKE_PROFIT';
-  quantity: string;
-  price?: string;
-  stopPrice?: string;
+  type: 'LIMIT' | 'MARKET' | 'STOP' | 'STOP_MARKET';
+  quantity: number;
+  price?: number;
+  stopPrice?: number;
   timeInForce?: 'GTC' | 'IOC' | 'FOK';
-  reduceOnly?: boolean;
-  leverage?: number;
+  positionSide?: 'LONG' | 'SHORT' | 'BOTH';
 }
 
-// Analytics and performance types
+// Performance metrics
 export interface PerformanceMetrics {
+  id?: number;
   portfolioValue: string;
   portfolioChangePercent: string;
   dailyPnL: string;
   dailyPnLPercent: string;
   weeklyPnL: string;
   weeklyPnLPercent: string;
+  monthlyPnL: string;
+  monthlyPnLPercent: string;
+  totalPnL: string;
+  totalPnLPercent: string;
+  winRate: number;
   totalTrades: number;
-  winningTrades: number;
-  losingTrades: number;
-  winRate: number;
-  avgProfit: string;
-  avgLoss: string;
-  maxDrawdown: string;
+  profitFactor: string;
   sharpeRatio: string;
-  sortino: string;
+  maxDrawdown: string;
+  avgTradeDuration: number;
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: number;
 }
 
+// Risk metrics
 export interface RiskMetrics {
-  totalRiskExposure: number;
-  maxRiskLimit: number;
-  currentDrawdown: string;
-  maxDrawdownLimit: string;
-  maxPositionSize: string;
-  maxPositions: number;
-  currentPositions: number;
-  systemStatus: {
-    api: boolean;
-    execution: boolean;
-    dataFeed: boolean;
-  };
+  totalRiskExposure: number; // percentage
+  maxRiskLimit: number; // percentage
+  activePositions: number; // count
+  maxPositions: number; // count
+  currentDrawdown: number; // percentage
+  maxDrawdownLimit: number; // percentage
+  maxLeverage: number; // multiplier
+  maxRiskPerTrade: number; // percentage
 }
 
-export interface StrategyPerformance {
-  strategy: StrategyType;
-  winRate: number;
-  pnl: string;
-  pnlPercent: string;
-  trades: number;
+// Strategy interface
+export interface Strategy {
+  id: number;
+  name: string;
+  description: string;
+  type: StrategyType;
+  parameters: any; // JSON of parameters
+  active: boolean;
+  markets: string[]; // Array of markets to trade
+  timeframes: string[]; // Array of timeframes to analyze
+  createdAt?: string;
+  updatedAt?: string;
+  userId?: number;
 }
 
-// WebSocket message types
-export interface WSMessage {
-  type: string;
-  data: any;
+// For account info
+export interface AccountInfo {
+  availableBalance: string;
+  totalBalance: string;
+  totalMarginBalance: string;
+  totalPositionMargin: string;
+  totalUnrealizedProfit: string;
+  totalMaintenanceMargin: string;
 }

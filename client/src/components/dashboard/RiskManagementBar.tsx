@@ -1,4 +1,4 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { RiskMetrics } from "@/lib/types";
 
 interface RiskManagementBarProps {
@@ -7,133 +7,99 @@ interface RiskManagementBarProps {
 }
 
 export default function RiskManagementBar({ riskMetrics, isLoading }: RiskManagementBarProps) {
+  if (isLoading) {
+    return (
+      <div className="mt-8 p-4 bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] animate-pulse">
+        <div className="h-6 bg-gray-700 rounded w-1/4 mb-4"></div>
+        <div className="h-12 bg-gray-700 rounded"></div>
+      </div>
+    );
+  }
+  
+  // Calculate risk status
   const riskPercentage = (riskMetrics.totalRiskExposure / riskMetrics.maxRiskLimit) * 100;
-  const riskStatus = riskPercentage <= 50 
-    ? "Healthy" 
-    : riskPercentage <= 80 
-    ? "Moderate" 
-    : "High";
+  const riskStatus = 
+    riskPercentage >= 80 ? "high" : 
+    riskPercentage >= 50 ? "medium" : 
+    "low";
   
-  const riskStatusColor = riskPercentage <= 50 
-    ? "text-success" 
-    : riskPercentage <= 80 
-    ? "text-primary" 
-    : "text-danger";
-  
-  const riskBarColor = riskPercentage <= 50 
-    ? "bg-success" 
-    : riskPercentage <= 80 
-    ? "bg-primary" 
-    : "bg-danger";
+  // Calculate status colors
+  const statusColors = {
+    low: {
+      bg: "bg-[rgba(0,200,151,0.1)]",
+      text: "text-[#00C897]",
+      progressBg: "bg-[#00C897]",
+    },
+    medium: {
+      bg: "bg-[rgba(255,184,0,0.1)]",
+      text: "text-[#FFB800]",
+      progressBg: "bg-[#FFB800]",
+    },
+    high: {
+      bg: "bg-[rgba(255,59,105,0.1)]",
+      text: "text-[#FF3B69]",
+      progressBg: "bg-[#FF3B69]",
+    },
+  };
   
   return (
-    <Card className="card-glass mt-6">
-      <CardContent className="p-4">
-        <h2 className="font-semibold text-lg mb-3 flex items-center">
-          <i className="ri-shield-check-line text-primary mr-2"></i>
-          Risk Management
-        </h2>
+    <div className="mt-8 p-4 bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)]">
+      <div className="flex flex-col md:flex-row justify-between mb-3">
+        <div>
+          <h3 className="font-medium">System Risk Management</h3>
+          <p className="text-sm text-neutral-400">Dynamic risk controls and exposure monitoring</p>
+        </div>
         
-        {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="mt-2 md:mt-0 flex items-center space-x-2">
+          <div className={`px-3 py-1 rounded-full text-sm ${statusColors[riskStatus].bg} ${statusColors[riskStatus].text}`}>
+            {riskStatus === "low" ? "Low Risk" : riskStatus === "medium" ? "Medium Risk" : "High Risk"}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#1C2230] rounded-lg p-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm">Account Risk</span>
-                <span className={riskStatusColor + " text-xs"}>{riskStatus}</span>
-              </div>
-              
-              <div className="mb-1">
-                <div className="flex justify-between text-xs mb-1">
-                  <span>Total Risk Exposure</span>
-                  <span>{riskMetrics.totalRiskExposure}% / {riskMetrics.maxRiskLimit}%</span>
-                </div>
-                <div className="h-1.5 bg-[#131722] rounded-full w-full">
-                  <div 
-                    className={`h-1.5 ${riskBarColor} rounded-full`} 
-                    style={{ width: `${riskPercentage}%` }}
-                  ></div>
-                </div>
-              </div>
-              
-              <div className="flex justify-between text-xs text-neutral-light">
-                <span>Max Drawdown: {riskMetrics.currentDrawdown}</span>
-                <span>Target Limit: {riskMetrics.maxDrawdownLimit}</span>
-              </div>
-            </div>
-            
-            <div className="bg-[#1C2230] rounded-lg p-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm">Position Limits</span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Max Position Size</div>
-                  <div className="flex items-baseline">
-                    <span className="font-mono font-medium">{riskMetrics.maxPositionSize}</span>
-                    <span className="text-xs text-neutral-light ml-1">USDT</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Max Positions</div>
-                  <div className="flex items-baseline">
-                    <span className="font-mono font-medium">{riskMetrics.maxPositions}</span>
-                    <span className="text-xs text-neutral-light ml-1">
-                      ({riskMetrics.currentPositions} active)
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-[#1C2230] rounded-lg p-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm">System Health</span>
-                <span className="inline-flex items-center bg-success bg-opacity-20 text-success px-2 py-0.5 rounded text-xs">
-                  <i className="ri-checkbox-circle-line mr-1"></i>
-                  {riskMetrics.systemStatus.api && 
-                   riskMetrics.systemStatus.execution && 
-                   riskMetrics.systemStatus.dataFeed
-                    ? "All Systems Operational"
-                    : "System Issue Detected"
-                  }
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-1 text-center">
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">API</div>
-                  <i className={`${
-                    riskMetrics.systemStatus.api 
-                      ? "ri-checkbox-circle-fill text-success" 
-                      : "ri-close-circle-fill text-danger"
-                  }`}></i>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Execution</div>
-                  <i className={`${
-                    riskMetrics.systemStatus.execution 
-                      ? "ri-checkbox-circle-fill text-success" 
-                      : "ri-close-circle-fill text-danger"
-                  }`}></i>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Data Feed</div>
-                  <i className={`${
-                    riskMetrics.systemStatus.dataFeed 
-                      ? "ri-checkbox-circle-fill text-success" 
-                      : "ri-close-circle-fill text-danger"
-                  }`}></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          <Button size="sm" variant="outline" className="border-[rgba(73,86,118,0.3)] text-white">
+            <i className="ri-settings-4-line mr-1.5"></i>
+            Settings
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
+          <div className="text-sm text-neutral-400 mb-1">Total Risk Exposure</div>
+          <div className="font-bold text-lg">{riskMetrics.totalRiskExposure}%</div>
+          <div className="text-xs text-neutral-400">of maximum {riskMetrics.maxRiskLimit}%</div>
+        </div>
+        
+        <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
+          <div className="text-sm text-neutral-400 mb-1">Active Positions</div>
+          <div className="font-bold text-lg">{riskMetrics.activePositions || 0}</div>
+          <div className="text-xs text-neutral-400">of maximum {riskMetrics.maxPositions}</div>
+        </div>
+        
+        <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
+          <div className="text-sm text-neutral-400 mb-1">Current Drawdown</div>
+          <div className="font-bold text-lg">{riskMetrics.currentDrawdown || 0}%</div>
+          <div className="text-xs text-neutral-400">limit {riskMetrics.maxDrawdownLimit}%</div>
+        </div>
+        
+        <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
+          <div className="text-sm text-neutral-400 mb-1">Max Leverage</div>
+          <div className="font-bold text-lg">{riskMetrics.maxLeverage}x</div>
+          <div className="text-xs text-neutral-400">dynamic adjustment active</div>
+        </div>
+      </div>
+      
+      <div className="w-full bg-[rgba(10,15,28,0.3)] h-2 rounded-full overflow-hidden">
+        <div 
+          className={`h-full ${statusColors[riskStatus].progressBg}`}
+          style={{ width: `${Math.min(100, riskPercentage)}%` }}
+        ></div>
+      </div>
+      
+      <div className="mt-1 flex justify-between">
+        <span className="text-xs text-neutral-400">Low Risk</span>
+        <span className="text-xs text-neutral-400">Medium Risk</span>
+        <span className="text-xs text-neutral-400">High Risk</span>
+      </div>
+    </div>
   );
 }

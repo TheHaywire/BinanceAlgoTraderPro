@@ -1,313 +1,167 @@
-import { useRef, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { PerformanceMetrics as PerformanceMetricsType, StrategyPerformance } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PerformanceMetrics as PerformanceMetricsType } from "@/lib/types";
 import { STRATEGY_NAMES } from "@/lib/constants";
 
 interface PerformanceMetricsProps {
   metrics: PerformanceMetricsType;
-  strategyPerformance: StrategyPerformance[];
+  strategyPerformance: any[];
   isLoading: boolean;
 }
 
-export default function PerformanceMetrics({ 
-  metrics, 
-  strategyPerformance,
-  isLoading 
-}: PerformanceMetricsProps) {
-  const equityCurveRef = useRef<SVGSVGElement>(null);
-  const winLossChartRef = useRef<SVGSVGElement>(null);
-  const strategyChartRef = useRef<SVGSVGElement>(null);
-
-  // Create equity curve chart
-  useEffect(() => {
-    if (!equityCurveRef.current || isLoading) return;
-    
-    // Placeholder for a real equity curve from performance data
-    const svgElement = equityCurveRef.current;
-    
-    // Clear previous chart
-    while (svgElement.firstChild) {
-      svgElement.removeChild(svgElement.firstChild);
-    }
-    
-    // Grid lines
-    for (let i = 0; i <= 4; i++) {
-      const y = (i / 4) * 100;
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', '0');
-      line.setAttribute('y1', y.toString());
-      line.setAttribute('x2', '400');
-      line.setAttribute('y2', y.toString());
-      line.setAttribute('stroke', '#252D3D');
-      line.setAttribute('stroke-width', '1');
-      svgElement.appendChild(line);
-    }
-    
-    // Equity curve path - just a placeholder curve
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', 'M0,80 C20,75 40,70 60,65 S100,60 120,58 S160,50 180,45 S220,40 240,38 S280,35 300,32 S340,28 360,25 S380,20 400,18');
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', '#00C897');
-    path.setAttribute('stroke-width', '2');
-    svgElement.appendChild(path);
-    
-    // Area under curve
-    const areaPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    areaPath.setAttribute('d', 'M0,80 C20,75 40,70 60,65 S100,60 120,58 S160,50 180,45 S220,40 240,38 S280,35 300,32 S340,28 360,25 S380,20 400,18 L400,100 L0,100 Z');
-    areaPath.setAttribute('fill', 'url(#gradientSuccess)');
-    areaPath.setAttribute('stroke', 'none');
-    areaPath.setAttribute('opacity', '0.2');
-    svgElement.appendChild(areaPath);
-    
-    // Add gradient definition
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-    gradient.setAttribute('id', 'gradientSuccess');
-    gradient.setAttribute('x1', '0%');
-    gradient.setAttribute('y1', '0%');
-    gradient.setAttribute('x2', '0%');
-    gradient.setAttribute('y2', '100%');
-    
-    const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop1.setAttribute('offset', '0%');
-    stop1.setAttribute('stop-color', '#00C897');
-    stop1.setAttribute('stop-opacity', '0.8');
-    
-    const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
-    stop2.setAttribute('offset', '100%');
-    stop2.setAttribute('stop-color', '#00C897');
-    stop2.setAttribute('stop-opacity', '0');
-    
-    gradient.appendChild(stop1);
-    gradient.appendChild(stop2);
-    defs.appendChild(gradient);
-    svgElement.appendChild(defs);
-  }, [isLoading, metrics]);
-
-  // Create win/loss donut chart
-  useEffect(() => {
-    if (!winLossChartRef.current || isLoading) return;
-    
-    const svgElement = winLossChartRef.current;
-    
-    // Clear previous chart
-    while (svgElement.firstChild) {
-      svgElement.removeChild(svgElement.firstChild);
-    }
-    
-    const wins = metrics.winningTrades;
-    const losses = metrics.losingTrades;
-    const winRate = metrics.winRate;
-    
-    // Background circle
-    const bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    bgCircle.setAttribute('cx', '50');
-    bgCircle.setAttribute('cy', '50');
-    bgCircle.setAttribute('r', '40');
-    bgCircle.setAttribute('fill', 'none');
-    bgCircle.setAttribute('stroke', '#FF3B69');
-    bgCircle.setAttribute('stroke-width', '15');
-    svgElement.appendChild(bgCircle);
-    
-    // Win rate arc
-    const winCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    winCircle.setAttribute('cx', '50');
-    winCircle.setAttribute('cy', '50');
-    winCircle.setAttribute('r', '40');
-    winCircle.setAttribute('fill', 'none');
-    winCircle.setAttribute('stroke', '#00C897');
-    winCircle.setAttribute('stroke-width', '15');
-    winCircle.setAttribute('stroke-dasharray', `${2 * Math.PI * 40 * (winRate / 100)} ${2 * Math.PI * 40 * (1 - winRate / 100)}`);
-    winCircle.setAttribute('stroke-dashoffset', '0');
-    winCircle.setAttribute('transform', 'rotate(-90 50 50)');
-    svgElement.appendChild(winCircle);
-    
-    // Center text
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '50');
-    text.setAttribute('y', '50');
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('dominant-baseline', 'middle');
-    text.setAttribute('fill', '#FFFFFF');
-    text.setAttribute('font-size', '20');
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = `${winRate}%`;
-    svgElement.appendChild(text);
-  }, [isLoading, metrics]);
-
-  // Create strategy performance bar chart
-  useEffect(() => {
-    if (!strategyChartRef.current || isLoading) return;
-    
-    const svgElement = strategyChartRef.current;
-    
-    // Clear previous chart
-    while (svgElement.firstChild) {
-      svgElement.removeChild(svgElement.firstChild);
-    }
-    
-    // Create bars for each strategy
-    strategyPerformance.slice(0, 4).forEach((strategy, index) => {
-      const x = 40 * index + 10;
-      // Scale the bar height based on strategy performance
-      const barHeight = 60 * (strategy.winRate / 100);
-      const y = 70 - barHeight;
-      
-      const barColor = index % 2 === 0 ? '#0095FF' : '#00C897';
-      
-      // Bar
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x.toString());
-      rect.setAttribute('y', y.toString());
-      rect.setAttribute('width', '30');
-      rect.setAttribute('height', barHeight.toString());
-      rect.setAttribute('fill', barColor);
-      rect.setAttribute('opacity', '0.8');
-      svgElement.appendChild(rect);
-      
-      // Label
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', (x + 15).toString());
-      text.setAttribute('y', '82');
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('fill', '#FFFFFF');
-      text.setAttribute('font-size', '8');
-      
-      // Handle different types of strategies with abbreviations
-      let label = "";
-      switch(strategy.strategy) {
-        case "MOMENTUM_BREAKOUT":
-          label = "Momentum";
-          break;
-        case "MEAN_REVERSION":
-          label = "Mean Rev";
-          break;
-        case "VOLATILITY_EXPANSION":
-          label = "Vol Exp";
-          break;
-        case "FUNDING_ARBITRAGE":
-          label = "Funding";
-          break;
-        case "LIQUIDATION_CASCADE":
-          label = "Liquid";
-          break;
-        default:
-          label = "Other";
-      }
-      
-      text.textContent = label;
-      svgElement.appendChild(text);
-    });
-  }, [isLoading, strategyPerformance]);
+export default function PerformanceMetrics({ metrics, strategyPerformance, isLoading }: PerformanceMetricsProps) {
+  if (isLoading) {
+    return (
+      <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4 animate-pulse">
+        <div className="h-6 bg-gray-700 rounded w-1/4 mb-4"></div>
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-12 bg-gray-700 rounded"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Card className="card-glass">
-      <CardContent className="p-4">
-        <h2 className="font-semibold text-lg mb-4 flex items-center">
-          <i className="ri-line-chart-line text-primary mr-2"></i>
-          Performance Metrics
-        </h2>
+    <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-medium">Performance Analytics</h3>
+        <div className="flex space-x-2">
+          <Button variant="outline" size="sm" className="border-[rgba(73,86,118,0.3)] text-white">
+            <i className="ri-download-line mr-1.5"></i>
+            Export
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-[rgba(10,15,28,0.3)] rounded-xl p-4">
+          <div className="text-sm text-neutral-400 mb-2">Trade P&L</div>
+          <div className="text-xl font-bold text-white">
+            {parseFloat(metrics.totalPnL || "0") >= 0 ? "+" : ""}
+            {metrics.totalPnL || "0.00"} USDT
+          </div>
+          <div className="text-sm text-neutral-400">
+            Total return {parseFloat(metrics.totalPnLPercent || "0") >= 0 ? "+" : ""}
+            {metrics.totalPnLPercent || "0.00"}%
+          </div>
+          <div className="mt-2 h-24 flex items-end">
+            <div className="flex-1 h-3/4 bg-[rgba(0,149,255,0.1)] flex items-end justify-center rounded-t-md">
+              <div className="w-3/4 h-2/3 bg-primary rounded-t-md"></div>
+            </div>
+            <div className="flex-1 h-1/2 bg-[rgba(0,149,255,0.1)] flex items-end justify-center rounded-t-md">
+              <div className="w-3/4 h-2/3 bg-primary rounded-t-md"></div>
+            </div>
+            <div className="flex-1 h-full bg-[rgba(0,149,255,0.1)] flex items-end justify-center rounded-t-md">
+              <div className="w-3/4 h-4/5 bg-primary rounded-t-md"></div>
+            </div>
+            <div className="flex-1 h-2/3 bg-[rgba(0,149,255,0.1)] flex items-end justify-center rounded-t-md">
+              <div className="w-3/4 h-1/2 bg-primary rounded-t-md"></div>
+            </div>
+            <div className="flex-1 h-full bg-[rgba(0,149,255,0.1)] flex items-end justify-center rounded-t-md">
+              <div className="w-3/4 h-5/6 bg-primary rounded-t-md"></div>
+            </div>
+          </div>
+        </div>
         
-        {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-[#1C2230] rounded-lg p-3">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm">Equity Curve (7 days)</span>
-                <span className={`
-                  ${parseFloat(metrics.weeklyPnLPercent) >= 0 
-                    ? "text-success bg-success" 
-                    : "text-danger bg-danger"
-                  } bg-opacity-20 text-xs px-2 py-0.5 rounded
-                `}>
-                  {parseFloat(metrics.weeklyPnLPercent) >= 0 ? "+" : ""}
-                  {metrics.weeklyPnLPercent}%
-                </span>
-              </div>
-              
-              <div className="chart-area h-32 rounded-md p-2 mb-2">
-                <svg 
-                  ref={equityCurveRef}
-                  width="100%" 
-                  height="100%" 
-                  viewBox="0 0 400 100"
-                ></svg>
-              </div>
+        <div className="bg-[rgba(10,15,28,0.3)] rounded-xl p-4">
+          <div className="text-sm text-neutral-400 mb-2">Performance Metrics</div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-neutral-300">Win/Loss Ratio</span>
+              <span className="text-sm font-medium">{metrics.winRate || "0.00"}%</span>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#1C2230] rounded-lg p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm">Win/Loss Ratio</span>
-                </div>
-                
-                <div className="chart-area h-24 rounded-md flex items-center justify-center">
-                  <svg 
-                    ref={winLossChartRef}
-                    width="80" 
-                    height="80" 
-                    viewBox="0 0 100 100"
-                  ></svg>
-                  
-                  <div className="ml-4">
-                    <div className="flex items-center text-xs mb-1">
-                      <span className="w-3 h-3 bg-success rounded-full mr-2"></span>
-                      <span>Wins: {metrics.winningTrades}</span>
-                    </div>
-                    <div className="flex items-center text-xs">
-                      <span className="w-3 h-3 bg-danger rounded-full mr-2"></span>
-                      <span>Losses: {metrics.losingTrades}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-[#1C2230] rounded-lg p-3">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm">Strategy Performance</span>
-                </div>
-                
-                <div className="chart-area h-24 rounded-md flex items-center justify-center">
-                  <svg 
-                    ref={strategyChartRef}
-                    width="100%" 
-                    height="100%" 
-                    viewBox="0 0 180 90"
-                  ></svg>
-                </div>
-              </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-neutral-300">Total Trades</span>
+              <span className="text-sm font-medium">{metrics.totalTrades || 0}</span>
             </div>
-            
-            <div className="bg-[#1C2230] rounded-lg p-3">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm">Risk Metrics</span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Sharpe Ratio</div>
-                  <div className={parseFloat(metrics.sharpeRatio) >= 1 ? "text-success" : "text-neutral-light"} font-medium>
-                    {metrics.sharpeRatio}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Max Drawdown</div>
-                  <div className="text-danger font-medium">{metrics.maxDrawdown}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-neutral-light mb-1">Avg. Trade</div>
-                  <div className={parseFloat(metrics.avgProfit) >= 0 ? "text-success" : "text-danger"} font-medium>
-                    {parseFloat(metrics.avgProfit) >= 0 ? "+" : ""}{metrics.avgProfit}%
-                  </div>
-                </div>
-              </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-neutral-300">Sharpe Ratio</span>
+              <span className="text-sm font-medium">{metrics.sharpeRatio || "0.00"}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-neutral-300">Max Drawdown</span>
+              <span className="text-sm font-medium">{metrics.maxDrawdown || "0.00"}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-neutral-300">Avg. Trade Duration</span>
+              <span className="text-sm font-medium">{metrics.avgTradeDuration || "0"} min</span>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+      
+      <div>
+        <h4 className="text-sm font-medium mb-3">Strategy Performance</h4>
+        <div className="overflow-hidden border border-[rgba(73,86,118,0.15)] rounded-xl">
+          <Table className="premium-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Strategy</TableHead>
+                <TableHead>Win Rate</TableHead>
+                <TableHead>Profit/Loss</TableHead>
+                <TableHead>Trades</TableHead>
+                <TableHead className="text-right">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {strategyPerformance && strategyPerformance.length > 0 ? (
+                strategyPerformance.map((strategy) => (
+                  <TableRow key={strategy.id}>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Badge variant="outline" className="bg-[rgba(0,149,255,0.1)] text-primary border-none mr-2">
+                          {STRATEGY_NAMES[strategy.type] || strategy.type}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <div className="flex items-center">
+                        <div className="w-16 bg-[rgba(73,86,118,0.15)] h-1.5 rounded-full overflow-hidden mr-2">
+                          <div 
+                            className={`h-full ${strategy.winRate >= 50 ? 'bg-[#00C897]' : 'bg-[#FF3B69]'}`}
+                            style={{ width: `${Math.min(100, strategy.winRate)}%` }}
+                          ></div>
+                        </div>
+                        <span>{strategy.winRate}%</span>
+                      </div>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <span className={parseFloat(strategy.pnl) >= 0 ? 'text-[#00C897]' : 'text-[#FF3B69]'}>
+                        {parseFloat(strategy.pnl) >= 0 ? '+' : ''}{strategy.pnl} USDT
+                      </span>
+                    </TableCell>
+                    
+                    <TableCell>{strategy.trades}</TableCell>
+                    
+                    <TableCell className="text-right">
+                      <Badge 
+                        className={
+                          strategy.active ? 
+                            'bg-[rgba(0,200,151,0.1)] text-[#00C897] border-none' : 
+                            'bg-[rgba(255,184,0,0.1)] text-[#FFB800] border-none'
+                        }
+                      >
+                        {strategy.active ? 'Active' : 'Paused'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-neutral-400">
+                    No strategy performance data available
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </div>
   );
 }

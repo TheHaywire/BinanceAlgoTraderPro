@@ -1,21 +1,21 @@
-import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+
+type TrendDirection = "up" | "down" | "neutral";
 
 interface MetricCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  icon: string;
+  icon?: string;
   trend?: {
-    value: string | number;
-    direction: 'up' | 'down' | 'neutral';
+    value: string;
+    direction: TrendDirection;
     label?: string;
   };
   progress?: {
     value: number;
     max: number;
   };
-  className?: string;
 }
 
 export default function MetricCard({
@@ -25,62 +25,53 @@ export default function MetricCard({
   icon,
   trend,
   progress,
-  className
 }: MetricCardProps) {
-  const trendColor = trend
-    ? trend.direction === 'up'
-      ? 'text-success'
-      : trend.direction === 'down'
-      ? 'text-danger'
-      : 'text-neutral-light'
-    : '';
-
-  const trendIcon = trend
-    ? trend.direction === 'up'
-      ? 'ri-arrow-up-line'
-      : trend.direction === 'down'
-      ? 'ri-arrow-down-line'
-      : ''
-    : '';
-
   return (
-    <div className={cn("premium-card p-5", className)}>
-      {/* Add subtle glow effect in top-right corner */}
-      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-glow rounded-full opacity-50"></div>
-      
-      <div className="flex justify-between items-start mb-3 relative">
-        <span className="text-neutral-light text-sm font-medium">{title}</span>
-        <div className="w-10 h-10 rounded-lg bg-[rgba(28,34,48,0.5)] flex items-center justify-center">
-          <i className={`${icon} text-primary text-xl`}></i>
-        </div>
-      </div>
-      
-      <div className="flex items-baseline mt-2 relative">
-        <span className="text-2xl font-mono font-bold text-gradient-blue">{value}</span>
-        {subtitle && <span className="ml-1.5 text-neutral-light text-sm">{subtitle}</span>}
-      </div>
-      
-      {trend && (
-        <div className="flex items-center mt-2 relative">
-          <span className={`${trendColor} text-sm font-medium flex items-center`}>
-            {trendIcon && <i className={`${trendIcon} mr-1`}></i>}
-            {trend.value}
-          </span>
-          {trend.label && <span className="text-neutral-light text-xs ml-2 opacity-75">{trend.label}</span>}
-        </div>
-      )}
-      
-      {progress && (
-        <div className="flex items-center mt-3 relative">
-          <div className="h-1.5 bg-[rgba(19,23,34,0.5)] rounded-full w-full overflow-hidden">
-            <div 
-              className="h-1.5 bg-gradient-to-r from-[#0095FF] to-[#0047AB] rounded-full" 
-              style={{ width: `${(progress.value / progress.max) * 100}%` }}
-            ></div>
+    <div className="bg-gradient-to-br from-[rgba(16,22,34,0.6)] to-[rgba(10,15,28,0.1)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4 text-white backdrop-blur-sm">
+      <div className="flex items-start justify-between mb-3">
+        <div className="font-medium text-sm text-neutral-200">{title}</div>
+        {icon && (
+          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[rgba(0,149,255,0.1)]">
+            <i className={cn(icon, "text-primary")}></i>
           </div>
-          <span className="text-xs text-neutral-light ml-2">{progress.value}/{progress.max}</span>
+        )}
+      </div>
+      
+      <div className="flex flex-col">
+        <div className="text-xl md:text-2xl font-bold mb-0.5">
+          {value}
+          {subtitle && <span className="text-sm font-normal text-neutral-400 ml-1">{subtitle}</span>}
         </div>
-      )}
+        
+        {trend && (
+          <div className={cn(
+            "flex items-center text-xs",
+            trend.direction === "up" ? "text-[#00C897]" : 
+            trend.direction === "down" ? "text-[#FF3B69]" : 
+            "text-neutral-400"
+          )}>
+            {trend.direction !== "neutral" && (
+              <i className={cn(
+                trend.direction === "up" ? "ri-arrow-up-line" : "ri-arrow-down-line",
+                "mr-1"
+              )}></i>
+            )}
+            <span>{trend.value}</span>
+            {trend.label && <span className="text-neutral-400 ml-1">{trend.label}</span>}
+          </div>
+        )}
+        
+        {progress && (
+          <div className="mt-2">
+            <div className="w-full bg-[rgba(73,86,118,0.15)] h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary rounded-full"
+                style={{ width: `${Math.min(100, (progress.value / progress.max) * 100)}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
