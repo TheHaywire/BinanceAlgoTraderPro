@@ -47,13 +47,14 @@ export interface TradingOpportunity {
 // Market data
 export interface MarketData {
   symbol: string;
-  price: string;
+  lastPrice: string;
   priceChangePercent: string;
   volume: string;
   high: string;
   low: string;
   quoteVolume: string;
   count: number;
+  price?: string; // For backward compatibility
 }
 
 // Candle data

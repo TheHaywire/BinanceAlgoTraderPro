@@ -7,7 +7,8 @@ import {
   getPositions, 
   placeOrder, 
   cancelOrder, 
-  getCandles 
+  getCandles,
+  changeLeverage
 } from '../binance/api';
 import { 
   StrategyType, 
@@ -153,7 +154,8 @@ export class TradingCore extends EventEmitter {
         const symbol = data.s;
         const marketData: MarketData = {
           symbol,
-          price: data.c,
+          lastPrice: data.c,
+          price: data.c, // For backwards compatibility
           priceChangePercent: data.P,
           volume: data.v,
           high: data.h,
@@ -727,20 +729,54 @@ export class TradingCore extends EventEmitter {
       // Calculate position size
       const positionSize = this.calculatePositionSize(opportunity);
       
+      // Round position size to the correct precision for this asset
+      const roundedQuantity = this.roundToAssetPrecision(opportunity.symbol, positionSize);
+      
+      console.log(`Executing opportunity for ${opportunity.symbol}: calculated size ${positionSize}, rounded to ${roundedQuantity}`);
+      
+      // Set appropriate leverage before placing order
+      const leverage = 5; // Use a conservative leverage of 5x
+      try {
+        console.log(`Setting leverage for ${opportunity.symbol} to ${leverage}x`);
+        await changeLeverage(opportunity.symbol, leverage);
+      } catch (leverageError) {
+        console.error(`Error setting leverage for ${opportunity.symbol}:`, leverageError);
+        // Continue with default leverage
+      }
+      
       // Create order parameters
       const orderParams: ExecutionOrder = {
         symbol: opportunity.symbol,
         side: opportunity.direction === 'LONG' ? 'BUY' : 'SELL',
         type: 'MARKET',
-        quantity: positionSize,
+        quantity: roundedQuantity,
         // For limit orders:
         // price: parseFloat(opportunity.entryPrice),
         // timeInForce: 'GTC',
         positionSide: 'BOTH'
       };
       
-      // Execute order
-      const orderResult = await placeOrder(orderParams);
+      // Execute order - retry once if it fails
+      let orderResult;
+      try {
+        orderResult = await placeOrder(orderParams);
+      } catch (orderError) {
+        console.error(`First attempt to place order failed:`, orderError);
+        
+        // If the error is related to precision or minimum notional, try a different quantity
+        if (orderError.response?.data?.code === -1111 || orderError.response?.data?.code === -4164) {
+          console.log(`Retrying with adjusted quantity...`);
+          // For minimum notional errors, increase quantity
+          const adjustedQuantity = roundedQuantity * 1.5;
+          orderParams.quantity = this.roundToAssetPrecision(opportunity.symbol, adjustedQuantity);
+          
+          // Try again
+          orderResult = await placeOrder(orderParams);
+        } else {
+          // Re-throw for other errors
+          throw orderError;
+        }
+      }
       
       // Save to database
       await this.saveExecutedTrade(opportunity, orderResult);
@@ -796,9 +832,37 @@ export class TradingCore extends EventEmitter {
   }
   
   private roundToAssetPrecision(symbol: string, amount: number): number {
-    // In a real system, get the precision from symbol info
-    // For simplicity, using fixed precision here
-    return parseFloat(amount.toFixed(3));
+    // Get market data for this symbol
+    const marketData = this.marketData.get(symbol);
+    
+    // Default precision values if we can't find specific info
+    let precision = 3;
+    
+    // Use exchange info if available to determine the correct precision
+    if (marketData) {
+      // Most Binance futures have 3 decimal places, but BTC might have fewer
+      if (symbol === 'BTCUSDT') {
+        precision = 3;
+      } else if (symbol === 'ETHUSDT') {
+        precision = 3;
+      } else if (symbol === 'BNBUSDT') {
+        precision = 2;
+      } else {
+        // Default for most alt coins
+        precision = 1;
+      }
+    }
+    
+    const rounded = parseFloat(amount.toFixed(precision));
+    
+    // Ensure minimum notional value requirements are met
+    if (rounded * parseFloat(marketData?.lastPrice || '0') < 5) {
+      // If value is less than $5 equivalent, adjust to meet minimum requirements
+      console.log(`Adjusting quantity for ${symbol} to meet minimum notional value`);
+      return parseFloat((5 / parseFloat(marketData?.lastPrice || '100')).toFixed(precision));
+    }
+    
+    return rounded;
   }
   
   private async saveExecutedTrade(opportunity: TradingOpportunity, orderResult: any) {
