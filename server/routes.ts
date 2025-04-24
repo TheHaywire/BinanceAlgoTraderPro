@@ -520,12 +520,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws) => {
     wsClients.add(ws);
     
+    // Import trading core at connection time to ensure it's initialized
+    const { tradingCore } = require('./trading/core');
+    
     // Send initial market data
     binanceApi.getMarketData()
       .then(data => {
         ws.send(JSON.stringify({
           type: 'marketUpdate',
           data
+        }));
+        
+        // Also send trading core status
+        ws.send(JSON.stringify({
+          type: 'tradingStatus',
+          data: {
+            opportunities: tradingCore.getOpportunities(),
+            positions: tradingCore.getPositions(),
+            autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
+            lastScanTime: tradingCore.getLastScanTime(),
+            regimes: tradingCore.getRegimes()
+          }
         }));
       })
       .catch(error => {
@@ -535,6 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', (message) => {
       try {
         const data = JSON.parse(message.toString());
+        const { tradingCore } = require('./trading/core');
         
         // Handle subscription requests
         if (data.type === 'subscribe') {
@@ -545,14 +561,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Send current positions
             ws.send(JSON.stringify({
               type: 'positionUpdate',
-              data: mockPositions
+              data: tradingCore.getPositions() 
             }));
           } else if (data.channel === 'opportunity') {
             // Send current opportunities
             ws.send(JSON.stringify({
               type: 'opportunityUpdate',
-              data: mockOpportunities
+              data: tradingCore.getOpportunities()
             }));
+          } else if (data.channel === 'trading') {
+            // Send trading system status
+            ws.send(JSON.stringify({
+              type: 'tradingStatus',
+              data: {
+                autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
+                lastScanTime: tradingCore.getLastScanTime()
+              }
+            }));
+          }
+        }
+        // Handle trading commands
+        else if (data.type === 'command') {
+          if (data.command === 'enableAutoTrading') {
+            tradingCore.setAutoTradingEnabled(data.enabled);
+            console.log(`Auto-trading ${data.enabled ? 'enabled' : 'disabled'} by client`);
+            
+            // Broadcast to all clients
+            broadcastToClients({
+              type: 'tradingStatus',
+              data: {
+                autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
+                lastScanTime: tradingCore.getLastScanTime()
+              }
+            });
+          }
+          else if (data.command === 'scanMarket') {
+            // Trigger immediate market scan
+            tradingCore.scanMarket();
+            console.log('Market scan triggered by client');
+          }
+          else if (data.command === 'executeOpportunity') {
+            // Execute specific opportunity
+            tradingCore.executeOpportunity(data.opportunity);
+            console.log(`Opportunity execution triggered by client: ${data.opportunity.id}`);
           }
         }
       } catch (error) {
