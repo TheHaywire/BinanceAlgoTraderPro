@@ -421,40 +421,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/binance/performance", async (req, res) => {
     try {
-      // Try to get performance metrics from database first
-      const userId = 1; // Mock user ID for demo
+      // First try to get account info from Binance API
+      let realAccountInfo = null;
+      try {
+        realAccountInfo = await binanceApi.getAccountInfo();
+      } catch (apiError) {
+        console.error("Could not get account info from Binance API:", apiError);
+      }
       
+      // Try to get real positions from Binance API
+      let realPositions = [];
+      try {
+        realPositions = await binanceApi.getPositions();
+      } catch (posError) {
+        console.error("Could not get positions from Binance API:", posError);
+      }
+      
+      // Try to get performance metrics from database
+      const userId = 1; // Mock user ID for demo
       const dbMetrics = await storage.getPerformanceMetrics(userId);
       
-      if (dbMetrics) {
-        // If found in DB, return those metrics
+      if (realAccountInfo && realPositions.length > 0) {
+        // Calculate real portfolio value from Binance account info
+        const availableBalance = parseFloat(realAccountInfo.availableBalance) || 0;
+        const totalUnrealizedProfit = realPositions.reduce((sum, pos) => 
+          sum + parseFloat(pos.unRealizedProfit || '0'), 0);
+        
+        const portfolioValue = (availableBalance + totalUnrealizedProfit).toFixed(2);
+        
+        // If we have database metrics, combine them with real data
+        if (dbMetrics) {
+          res.json({
+            ...dbMetrics,
+            portfolioValue: portfolioValue,
+            totalPnL: totalUnrealizedProfit.toFixed(2),
+            totalPnLPercent: ((totalUnrealizedProfit / availableBalance) * 100).toFixed(2),
+            // Only use historical metrics from database
+            dailyPnL: dbMetrics.dailyPnL,
+            weeklyPnL: dbMetrics.weeklyPnL, 
+            totalTrades: dbMetrics.totalTrades,
+            winningTrades: dbMetrics.winningTrades,
+            losingTrades: dbMetrics.losingTrades,
+            winRate: dbMetrics.winRate,
+            maxDrawdown: dbMetrics.maxDrawdown,
+            sharpeRatio: dbMetrics.sharpeRatio
+          });
+          return;
+        }
+        
+        // Otherwise create new metrics with real account data
         res.json({
-          ...mockPerformanceMetrics, // For backwards compatibility with fields not in DB
-          ...dbMetrics,
-          // Format fields for frontend consistency
-          portfolioValue: dbMetrics.portfolioValue,
-          dailyPnL: dbMetrics.dailyPnL,
-          weeklyPnL: dbMetrics.weeklyPnL,
-          totalTrades: dbMetrics.totalTrades,
-          winningTrades: dbMetrics.winningTrades,
-          losingTrades: dbMetrics.losingTrades,
-          winRate: dbMetrics.winRate,
-          maxDrawdown: dbMetrics.maxDrawdown,
-          sharpeRatio: dbMetrics.sharpeRatio
+          portfolioValue: portfolioValue,
+          portfolioChangePercent: "0.0", // Needs historical data
+          dailyPnL: "0.0", // Needs historical data
+          dailyPnLPercent: "0.0", // Needs historical data
+          weeklyPnL: "0.0", // Needs historical data 
+          weeklyPnLPercent: "0.0", // Needs historical data
+          totalPnL: totalUnrealizedProfit.toFixed(2),
+          totalPnLPercent: ((totalUnrealizedProfit / availableBalance) * 100).toFixed(2),
+          totalTrades: realPositions.length,
+          winningTrades: realPositions.filter(p => parseFloat(p.unRealizedProfit) > 0).length,
+          losingTrades: realPositions.filter(p => parseFloat(p.unRealizedProfit) <= 0).length,
+          winRate: 0, // Needs more data
+          maxDrawdown: "0.0", // Needs historical data
+          sharpeRatio: "0.0" // Needs historical data
         });
-      } else {
-        // If not found, return mock data
-        res.json(mockPerformanceMetrics);
+        return;
       }
+      
+      // If we have database metrics but no real data
+      if (dbMetrics) {
+        res.json(dbMetrics);
+        return;
+      }
+      
+      // Last resort: use mock data
+      console.warn("Using mock performance metrics - no real data available");
+      res.json({
+        portfolioValue: "25000.00",
+        portfolioChangePercent: "0.0",
+        dailyPnL: "0.0",
+        dailyPnLPercent: "0.0",
+        weeklyPnL: "0.0",
+        weeklyPnLPercent: "0.0",
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: 0,
+        maxDrawdown: "0.0",
+        sharpeRatio: "0.0"
+      });
     } catch (error) {
       console.error("Error fetching performance metrics:", error);
-      // Fallback to mock data on error
-      res.json(mockPerformanceMetrics);
+      res.status(500).json({ error: error.message });
     }
   });
   
-  app.get("/api/binance/risk", (req, res) => {
-    res.json(mockRiskMetrics);
+  app.get("/api/binance/risk", async (req, res) => {
+    try {
+      // Get real positions from Binance API
+      let positions = [];
+      try {
+        positions = await binanceApi.getPositions();
+      } catch (posError) {
+        console.error("Could not get positions from Binance API:", posError);
+      }
+      
+      // Use risk manager to calculate real risk metrics
+      const riskMetrics = riskManager.getRiskMetrics(positions);
+      
+      res.json(riskMetrics);
+    } catch (error) {
+      console.error("Error calculating risk metrics:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
   
   app.post("/api/binance/execute", async (req, res) => {
@@ -472,41 +552,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Opportunity not found" });
       }
       
-      // Execute the opportunity
-      const result = tradingEngine.executeOpportunity(opportunity);
-      
-      // Update mock positions
-      if (result.position) {
-        mockPositions.push(result.position);
+      try {
+        // Use tradingCore (which uses real Binance API) to execute the opportunity
+        const result = await tradingCore.executeOpportunity(opportunity);
         
-        // Store position in database
-        try {
-          const userId = 1; // Mock user ID for demo
-          const dbPosition = {
-            userId,
-            symbol: result.position.symbol,
-            positionAmt: result.position.positionAmt,
-            entryPrice: result.position.entryPrice,
-            markPrice: result.position.markPrice,
-            unRealizedProfit: result.position.unRealizedProfit,
-            liquidationPrice: result.position.liquidationPrice,
-            leverage: result.position.leverage,
-            marginType: result.position.marginType,
-            positionSide: result.position.positionSide
-          };
+        // Remove the opportunity from the list
+        mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
+        
+        res.json({
+          executed: true,
+          order: result
+        });
+      } catch (executionError) {
+        console.error("Error executing trade with Binance API:", executionError);
+        
+        // Fallback to simulation if real API fails
+        const result = tradingEngine.executeOpportunity(opportunity);
+        
+        // Update mock positions
+        if (result.position) {
+          mockPositions.push(result.position);
           
-          await storage.createPosition(dbPosition);
-          console.log("Position saved to database:", result.position.symbol);
-        } catch (dbError) {
-          console.error("Error saving position to database:", dbError);
-          // Continue with response even if DB save fails
+          // Store position in database
+          try {
+            const userId = 1; // Mock user ID for demo
+            const dbPosition = {
+              userId,
+              symbol: result.position.symbol,
+              positionAmt: result.position.positionAmt,
+              entryPrice: result.position.entryPrice,
+              markPrice: result.position.markPrice,
+              unRealizedProfit: result.position.unRealizedProfit,
+              liquidationPrice: result.position.liquidationPrice,
+              leverage: result.position.leverage,
+              marginType: result.position.marginType,
+              positionSide: result.position.positionSide
+            };
+            
+            await storage.createPosition(dbPosition);
+            console.log(`Position saved to database: ${dbPosition.symbol}`);
+          } catch (dbError) {
+            console.error("Error saving position to database:", dbError);
+            // Continue with response even if DB save fails
+          }
         }
+        
+        // Remove the opportunity from the list
+        mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
+        
+        res.json({
+          executed: true, 
+          order: result.order,
+          simulated: true
+        });
       }
-      
-      // Remove the opportunity from the list
-      mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
-      
-      res.json(result);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
