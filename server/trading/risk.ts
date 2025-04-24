@@ -8,6 +8,10 @@ export class RiskManager {
   private maxLeverage: number = 25;
   private totalAccountValue: number = 25000; // USDT (simulated)
   
+  // Add getters for private properties
+  public getMaxPositions(): number { return this.maxPositions; }
+  public getRiskPerTrade(): number { return this.maxRiskPerTrade; }
+  
   constructor(config?: any) {
     if (config) {
       this.maxPositionSize = config.maxPositionSize || this.maxPositionSize;
@@ -189,6 +193,47 @@ export class RiskManager {
     }
     
     return targets;
+  }
+  
+  /**
+   * Validates if a trading opportunity meets risk criteria
+   */
+  validateForExecution(opportunity: any): { approved: boolean; reason?: string } {
+    // Check if opportunity has required fields
+    if (!opportunity.symbol || !opportunity.direction || !opportunity.entryPrice || !opportunity.stopLoss) {
+      return { approved: false, reason: 'Invalid opportunity data' };
+    }
+    
+    // Ensure direction is valid
+    if (opportunity.direction !== 'LONG' && opportunity.direction !== 'SHORT') {
+      return { approved: false, reason: 'Invalid direction' };
+    }
+    
+    // Validate risk-reward ratio
+    const entryPrice = parseFloat(opportunity.entryPrice);
+    const stopLoss = parseFloat(opportunity.stopLoss);
+    const targetPrice = parseFloat(opportunity.targetPrice);
+    
+    if (entryPrice <= 0 || stopLoss <= 0) {
+      return { approved: false, reason: 'Invalid price data' };
+    }
+    
+    // Calculate risk-reward ratio for validation
+    const riskAmount = Math.abs(entryPrice - stopLoss);
+    const rewardAmount = Math.abs(targetPrice - entryPrice);
+    const calculatedRR = rewardAmount / riskAmount;
+    
+    if (calculatedRR < 1.5) {
+      return { approved: false, reason: 'Risk-reward ratio too low' };
+    }
+    
+    // Check confidence score
+    if (opportunity.confidence < 60) {
+      return { approved: false, reason: 'Confidence score too low' };
+    }
+    
+    // All checks passed
+    return { approved: true };
   }
   
   /**

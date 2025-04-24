@@ -275,7 +275,8 @@ export class TradingCore extends EventEmitter {
         const allocation = this.strategyAllocations.get(strategy.type as StrategyType);
         
         if (allocation) {
-          allocation.active = strategy.active;
+          // Map isActive from database to active in our strategy allocation
+          allocation.active = strategy.isActive;
           // Update any other parameters from database
         }
       });
@@ -615,7 +616,7 @@ export class TradingCore extends EventEmitter {
     return Math.min(0.5, relatedPositions.length * 0.1); // Cap at 0.5 (50% penalty)
   }
   
-  private scanMarket() {
+  public scanMarket() {
     this.lastScanTime = Date.now();
     console.log(`Scanning market at ${new Date().toISOString()}`);
     
@@ -721,7 +722,7 @@ export class TradingCore extends EventEmitter {
       });
   }
   
-  private async executeOpportunity(opportunity: TradingOpportunity): Promise<any> {
+  public async executeOpportunity(opportunity: TradingOpportunity): Promise<any> {
     try {
       // Calculate position size
       const positionSize = this.calculatePositionSize(opportunity);
