@@ -12,11 +12,11 @@ export function generateOpportunities(marketData: any[]): TradingOpportunity[] {
 
   const opportunities: TradingOpportunity[] = [];
   const strategyTypes: StrategyType[] = [
-    'MOMENTUM_BREAKOUT',
-    'MEAN_REVERSION',
-    'VOLATILITY_EXPANSION',
-    'LIQUIDATION_CASCADE',
-    'FUNDING_ARBITRAGE'
+    'momentumBreakout',
+    'meanReversion',
+    'volatilityExpansion',
+    'liquidationCascade',
+    'fundingRateArbitrage'
   ];
 
   // Filter for popular symbols first
@@ -73,12 +73,14 @@ export function generateOpportunities(marketData: any[]): TradingOpportunity[] {
       symbol: data.symbol,
       strategy,
       direction,
-      entryPriceMin,
-      entryPriceMax,
+      entryPrice: entryPriceMin,
       targetPrice,
       stopLoss,
+      riskRewardRatio: parseFloat(targetPrice) / parseFloat(stopLoss),
+      signalTime: new Date(detectedAt).toISOString(),
+      confidence: score,
       score,
-      detectedAt
+      description: `${direction} ${data.symbol} - ${strategy}`
     });
   }
   
@@ -166,15 +168,15 @@ export function fundingRateArbitrageStrategy(fundingRates: any[], params: any = 
  */
 export function getStrategyFunction(strategyType: StrategyType): Function {
   switch (strategyType) {
-    case 'MOMENTUM_BREAKOUT':
+    case 'momentumBreakout':
       return momentumBreakoutStrategy;
-    case 'MEAN_REVERSION':
+    case 'meanReversion':
       return meanReversionStrategy;
-    case 'VOLATILITY_EXPANSION':
+    case 'volatilityExpansion':
       return volatilityExpansionStrategy;
-    case 'LIQUIDATION_CASCADE':
+    case 'liquidationCascade':
       return liquidationCascadeStrategy;
-    case 'FUNDING_ARBITRAGE':
+    case 'fundingRateArbitrage':
       return fundingRateArbitrageStrategy;
     default:
       throw new Error(`Unknown strategy type: ${strategyType}`);
