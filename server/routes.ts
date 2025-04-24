@@ -556,24 +556,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use tradingCore (which uses real Binance API) to execute the opportunity
         const result = await tradingCore.executeOpportunity(opportunity);
         
+        // Only if we get here with no errors, the trade was successful
+        console.log(`Successfully executed real trade for ${opportunity.symbol}:`, result);
+        
         // Remove the opportunity from the list
         mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
         
         res.json({
           executed: true,
-          order: result
+          order: result,
+          real: true
         });
       } catch (executionError) {
         console.error("Error executing trade with Binance API:", executionError);
         
-        // Fallback to simulation if real API fails
+        // Check if this is a critical error or just a precision/param issue
+        const errorCode = executionError?.response?.data?.code;
+        const errorMsg = executionError?.response?.data?.msg;
+        
+        if (errorCode) {
+          console.log(`Binance API error code: ${errorCode}, message: ${errorMsg}`);
+        }
+        
+        // Fallback to simulation ONLY for tracking purposes - no real trade was made
+        console.log(`Falling back to simulation for ${opportunity.symbol}`);
         const result = tradingEngine.executeOpportunity(opportunity);
         
-        // Update mock positions
+        // Add a simulation flag to the position
         if (result.position) {
+          result.position.simulated = true;
           mockPositions.push(result.position);
           
-          // Store position in database
+          // Store simulated position in database with clear marking
           try {
             const userId = 1; // Mock user ID for demo
             const dbPosition = {
@@ -586,13 +600,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               liquidationPrice: result.position.liquidationPrice,
               leverage: result.position.leverage,
               marginType: result.position.marginType,
-              positionSide: result.position.positionSide
+              positionSide: result.position.positionSide,
+              notes: "SIMULATED - FAILED TO EXECUTE REAL TRADE"
             };
             
             await storage.createPosition(dbPosition);
-            console.log(`Position saved to database: ${dbPosition.symbol}`);
+            console.log(`Simulated position saved to database: ${dbPosition.symbol}`);
           } catch (dbError) {
-            console.error("Error saving position to database:", dbError);
+            console.error("Error saving simulated position to database:", dbError);
             // Continue with response even if DB save fails
           }
         }
@@ -601,9 +616,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
         
         res.json({
-          executed: true, 
+          executed: false, 
+          simulated: true,
           order: result.order,
-          simulated: true
+          error: {
+            code: errorCode,
+            message: errorMsg
+          }
         });
       }
     } catch (error: any) {
