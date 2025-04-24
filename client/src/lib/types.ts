@@ -164,3 +164,9 @@ export interface AccountInfo {
   totalUnrealizedProfit: string;
   totalMaintenanceMargin: string;
 }
+
+// WebSocket message
+export interface WSMessage {
+  type: 'marketUpdate' | 'positionUpdate' | 'opportunityUpdate' | 'tradingStatus';
+  data: any;
+}

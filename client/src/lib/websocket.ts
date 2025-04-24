@@ -1,4 +1,4 @@
-import { WSMessage } from "./types";
+import { TradingOpportunity, Position, StrategyType, WSMessage } from "./types";
 
 export function createWebSocketConnection(): WebSocket {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -139,4 +139,73 @@ export function subscribeToOpportunityUpdates(
       }));
     }
   };
+}
+
+export interface TradingStatus {
+  autoTradingEnabled: boolean;
+  lastScanTime: number;
+  opportunities?: TradingOpportunity[];
+  positions?: Position[];
+  regimes?: Array<{
+    symbol: string;
+    timeframe: string;
+    regime: string;
+  }>;
+}
+
+export function subscribeToTradingStatus(
+  socket: WebSocket,
+  onMessage: (data: TradingStatus) => void
+): () => void {
+  
+  const handleMessage = (event: MessageEvent) => {
+    try {
+      const message: WSMessage = JSON.parse(event.data);
+      
+      if (message.type === 'tradingStatus') {
+        onMessage(message.data as TradingStatus);
+      }
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+    }
+  };
+  
+  socket.addEventListener('message', handleMessage);
+  
+  // Subscribe to trading status updates
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: 'subscribe',
+      channel: 'trading'
+    }));
+  }
+  
+  // Return unsubscribe function
+  return () => {
+    socket.removeEventListener('message', handleMessage);
+    
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'unsubscribe',
+        channel: 'trading'
+      }));
+    }
+  };
+}
+
+// Command functions to control the trading system
+export function sendTradingCommand(
+  socket: WebSocket,
+  command: 'enableAutoTrading' | 'scanMarket' | 'executeOpportunity',
+  params: any = {}
+): void {
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: 'command',
+      command,
+      ...params
+    }));
+  } else {
+    console.error('WebSocket is not connected');
+  }
 }

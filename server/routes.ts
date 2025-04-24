@@ -7,6 +7,7 @@ import BinanceWebSocketClient from "./binance/websocket";
 import { TradingEngine } from "./trading/engine";
 import { RiskManager } from "./trading/risk";
 import { generateOpportunities } from "./trading/strategies";
+import { tradingCore } from "./trading/core";
 import WebSocket from "ws";
 
 const wsClients: Set<WebSocket> = new Set();
@@ -520,9 +521,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   wss.on('connection', (ws) => {
     wsClients.add(ws);
     
-    // Import trading core at connection time to ensure it's initialized
-    const { tradingCore } = require('./trading/core');
-    
     // Send initial market data
     binanceApi.getMarketData()
       .then(data => {
@@ -550,7 +548,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', (message) => {
       try {
         const data = JSON.parse(message.toString());
-        const { tradingCore } = require('./trading/core');
         
         // Handle subscription requests
         if (data.type === 'subscribe') {
