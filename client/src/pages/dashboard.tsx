@@ -5,6 +5,7 @@ import ActivePositions from "@/components/dashboard/ActivePositions";
 import TradingOpportunities from "@/components/dashboard/TradingOpportunities";
 import PerformanceMetrics from "@/components/dashboard/PerformanceMetrics";
 import RiskManagementBar from "@/components/dashboard/RiskManagementBar";
+import PortfolioDiversification from "@/components/dashboard/PortfolioDiversification";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -563,11 +564,14 @@ export default function Dashboard() {
           
           {/* Strategy Performance Tab */}
           <TabsContent value="strategy-performance" className="space-y-6">
-            <PerformanceMetrics 
-              metrics={performanceMetrics}
-              strategyPerformance={strategyPerformance}
-              isLoading={isLoadingPerformance}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <PerformanceMetrics 
+                metrics={performanceMetrics}
+                strategyPerformance={strategyPerformance}
+                isLoading={isLoadingPerformance}
+              />
+              <PortfolioDiversification />
+            </div>
           </TabsContent>
           
           {/* System Logs Tab */}
