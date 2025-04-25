@@ -118,6 +118,10 @@ const initializeData = async () => {
 };
 
 // Broadcast messages to all connected WebSocket clients with timestamp
+// We need to declare wss here so the broadcast function can access it later
+let wss: WebSocketServer;
+
+// Broadcast messages to all connected WebSocket clients with timestamp
 const broadcastToClients = (message: any) => {
   // Add timestamp to track data freshness
   const messageWithTimestamp = {
@@ -128,16 +132,31 @@ const broadcastToClients = (message: any) => {
   const messageStr = JSON.stringify(messageWithTimestamp);
   let activeClients = 0;
   
-  wsClients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      try {
-        client.send(messageStr);
-        activeClients++;
-      } catch (error) {
-        console.error('Error broadcasting to client:', error);
+  // Try using the WebSocketServer's clients collection instead of our custom set
+  if (wss && wss.clients && wss.clients.size > 0) {
+    wss.clients.forEach((client: WebSocket) => {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(messageStr);
+          activeClients++;
+        } catch (error) {
+          console.error('Error broadcasting to client:', error);
+        }
       }
-    }
-  });
+    });
+  } else {
+    // Fallback to our custom tracking set
+    wsClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(messageStr);
+          activeClients++;
+        } catch (error) {
+          console.error('Error broadcasting to client:', error);
+        }
+      }
+    });
+  }
   
   // Log only for important updates, not for heartbeats
   if (message.type !== 'heartbeat') {
@@ -696,20 +715,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   
   // Create WebSocket server
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
   // Real-time heartbeat mechanism for checking if clients are still connected
   const heartbeatInterval = setInterval(() => {
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        try {
-          client.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
-        } catch (error) {
-          console.error('Error sending heartbeat:', error);
+    if (wss && wss.clients) {
+      console.log(`WebSocket heartbeat: ${wss.clients.size} clients tracked by WebSocketServer`);
+      
+      wss.clients.forEach((client: WebSocket) => {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
+          } catch (error) {
+            console.error('Error sending heartbeat:', error);
+          }
         }
-      }
-    });
-  }, 30000); // Send heartbeat every 30 seconds
+      });
+      
+      // Sync the custom client set with the WebSocketServer's clients
+      const activeServerClients = new Set<WebSocket>();
+      wss.clients.forEach((client: WebSocket) => {
+        if (client.readyState === WebSocket.OPEN) {
+          activeServerClients.add(client);
+        }
+      });
+      
+      // Reset wsClients to match WebSocketServer's active clients
+      wsClients.clear();
+      activeServerClients.forEach(client => {
+        wsClients.add(client);
+      });
+    } else {
+      console.log("WebSocket server not available for heartbeat");
+    }
+  }, 15000); // Send heartbeat every 15 seconds
   
   // Check for dead/stale connections and remove them
   const connectionMonitorInterval = setInterval(() => {
@@ -717,6 +756,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let activeCount = 0;
     let staleCount = 0;
     
+    // First update custom tracking from the wss.clients (source of truth)
+    const wsServerSize = wss && wss.clients ? wss.clients.size : 0;
+    console.log(`WebSocket monitor check: ${wsServerSize} clients in WebSocketServer, ${wsClients.size} in custom tracking`);
+    
+    // Re-sync with server clients first to ensure we're in sync
+    if (wss && wss.clients) {
+      const activeServerClients = new Set<WebSocket>();
+      wss.clients.forEach((client: WebSocket) => {
+        if (client.readyState === WebSocket.OPEN) {
+          activeServerClients.add(client);
+        }
+      });
+      
+      // Reset wsClients to match WebSocketServer's active clients
+      wsClients.clear();
+      activeServerClients.forEach(client => {
+        wsClients.add(client);
+      });
+    }
+    
+    // Now work with the updated wsClients
     wsClients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
         activeCount++;
@@ -742,7 +802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } else {
       console.log(`WebSocket connections - Active: ${activeCount}, Removed stale: ${staleCount}, Total: ${wsClients.size}`);
     }
-  }, 60000); // Check every minute
+  }, 30000); // Check every 30 seconds
   
   // Clean up on server shutdown
   process.on('SIGINT', () => {
