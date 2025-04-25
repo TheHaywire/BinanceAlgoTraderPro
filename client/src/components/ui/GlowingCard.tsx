@@ -5,89 +5,94 @@ interface GlowingCardProps {
   className?: string;
   glowColor?: string;
   glowIntensity?: 'low' | 'medium' | 'high';
+  interactive?: boolean;
 }
 
-const GlowingCard: React.FC<GlowingCardProps> = ({
+/**
+ * GlowingCard - A premium card component with customizable glow effects
+ * that can respond to user interaction.
+ */
+export const GlowingCard: React.FC<GlowingCardProps> = ({
   children,
   className = '',
-  glowColor = 'rgba(0, 112, 243, 0.5)',
+  glowColor = '#0095FF',
   glowIntensity = 'medium',
+  interactive = false,
 }) => {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isHovering, setIsHovering] = useState(false);
-
-  // Determine glow strength based on intensity
-  const glowSize = {
-    low: '20px',
-    medium: '35px',
-    high: '50px',
-  }[glowIntensity];
-
-  const glowOpacity = {
-    low: 0.3,
-    medium: 0.5,
-    high: 0.7,
-  }[glowIntensity];
-
-  // Handle mouse movement for dynamic glow effect
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setPosition({ x, y });
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Calculate the glow intensity based on the prop
+  const getGlowStyle = () => {
+    // Base shadow intensity values
+    const intensityValues = {
+      low: {
+        default: '0 0 10px 1px',
+        hover: '0 0 15px 2px'
+      },
+      medium: {
+        default: '0 0 15px 2px',
+        hover: '0 0 20px 4px'
+      },
+      high: {
+        default: '0 0 20px 4px',
+        hover: '0 0 30px 8px'
+      }
+    };
+    
+    // Convert hex to rgba for the glow
+    const hexToRgba = (hex: string, alpha: number) => {
+      // Remove # if present
+      hex = hex.replace('#', '');
+      
+      // Convert 3-char hex to 6-char
+      if (hex.length === 3) {
+        hex = hex.split('').map(char => char + char).join('');
+      }
+      
+      // Parse the hex values
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    
+    // Set opacity based on intensity
+    const opacity = {
+      low: { default: 0.2, hover: 0.3 },
+      medium: { default: 0.3, hover: 0.4 },
+      high: { default: 0.4, hover: 0.5 }
+    };
+    
+    const selectedIntensity = intensityValues[glowIntensity];
+    const selectedOpacity = opacity[glowIntensity];
+    
+    const glowValue = isHovered && interactive
+      ? selectedIntensity.hover
+      : selectedIntensity.default;
+      
+    const opacityValue = isHovered && interactive
+      ? selectedOpacity.hover
+      : selectedOpacity.default;
+    
+    return {
+      boxShadow: `${glowValue} ${hexToRgba(glowColor, opacityValue)}`,
+      transition: 'box-shadow 0.3s ease-in-out, transform 0.3s ease-in-out',
+      transform: isHovered && interactive ? 'translateY(-4px)' : 'translateY(0)',
+      backgroundColor: 'rgba(15, 23, 42, 0.5)',
+      borderRadius: '0.75rem',
+      border: `1px solid ${hexToRgba(glowColor, opacityValue / 2)}`,
+    };
   };
-
+  
   return (
     <div
-      className={`relative overflow-hidden rounded-lg border border-slate-800 bg-slate-950/50 backdrop-blur-sm ${className}`}
-      style={{
-        background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.9))',
-      }}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      className={`card-dashboard overflow-hidden ${className}`}
+      style={getGlowStyle()}
+      onMouseEnter={() => interactive && setIsHovered(true)}
+      onMouseLeave={() => interactive && setIsHovered(false)}
     >
-      {/* Dynamic glow effect that follows cursor */}
-      {isHovering && (
-        <div
-          className="absolute pointer-events-none transition-opacity duration-300"
-          style={{
-            left: `${position.x}px`,
-            top: `${position.y}px`,
-            transform: 'translate(-50%, -50%)',
-            width: glowSize,
-            height: glowSize,
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${glowColor} 0%, rgba(0,0,0,0) 70%)`,
-            opacity: glowOpacity,
-            zIndex: 1,
-            filter: 'blur(8px)',
-          }}
-        />
-      )}
-
-      {/* Static border glow effect */}
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{
-          background: `linear-gradient(145deg, rgba(0, 112, 243, 0.05), rgba(0, 200, 255, 0.1))`,
-          borderRadius: 'inherit',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Main content */}
-      <div className="relative z-10">{children}</div>
-      
-      {/* Subtle animated border glow */}
-      <div 
-        className="absolute inset-0 opacity-30 pointer-events-none" 
-        style={{
-          borderRadius: 'inherit',
-          boxShadow: `inset 0 0 5px ${glowColor.replace('0.5', '0.3')}`,
-          animation: 'pulse 4s infinite',
-        }}
-      />
+      {children}
     </div>
   );
 };

@@ -192,8 +192,10 @@ export function createWebSocketConnection(): WebSocket {
       connectionStatus = 'disconnected';
       lastUpdateTime = Date.now();
       
-      // Special handling for code 1006 (abnormal closure) which happens frequently in Replit
-      const isAbnormalClosure = event.code === 1006;
+      // Special handling for different close codes
+      const isAbnormalClosure = event.code === 1006; // Abnormal closure, common in Replit
+      const isNormalClosure = event.code === 1000 || event.code === 1001; // Normal closures
+      const isGoingAway = event.code === 1001; // Client/browser navigating away
       
       // Clean up heartbeat interval
       if (heartbeatInterval) {
@@ -206,46 +208,87 @@ export function createWebSocketConnection(): WebSocket {
         wsInstance = null;
       }
       
-      // For abnormal closures (code 1006), use faster reconnection with less backoff
+      // Don't try to reconnect if this was a normal closure and it was intentional
+      if (isNormalClosure && event.reason === "Intentional disconnect") {
+        emitWsEvent('ws:disconnected', { reason: 'intentional' });
+        return;
+      }
+      
+      // Prioritize fast reconnection for abnormal closures
       const currentMaxAttempts = isAbnormalClosure 
-        ? Math.max(30, maxReconnectAttempts) // More attempts for abnormal closures
+        ? Math.max(50, maxReconnectAttempts) // Even more attempts for abnormal closures
         : maxReconnectAttempts;
       
-      // Implement improved exponential backoff for reconnections
+      // For abnormal closures in Replit environment, modify our approach
       if (reconnectAttempts < currentMaxAttempts) {
         reconnectAttempts++;
         
-        // For abnormal closures, use faster reconnect initially
+        // Determine reconnection delay strategy based on closure type
         let exponentialDelay;
-        if (isAbnormalClosure && reconnectAttempts <= 3) {
-          // Use very short delay for first few attempts with abnormal closures
-          exponentialDelay = baseReconnectDelay;
+        
+        if (isAbnormalClosure) {
+          // Very aggressive reconnection strategy for code 1006
+          // First attempts almost immediate
+          if (reconnectAttempts <= 5) {
+            // First 5 attempts, use minimal delay (under 1.5s) to try to recover quickly
+            exponentialDelay = baseReconnectDelay + (reconnectAttempts * 100);
+          } else if (reconnectAttempts <= 15) {
+            // Next 10 attempts, gradual increase but still relatively fast
+            exponentialDelay = baseReconnectDelay * Math.pow(1.2, reconnectAttempts - 5);
+          } else {
+            // After many attempts, use more standard backoff to avoid hammering server
+            exponentialDelay = Math.min(
+              maxReconnectDelay, 
+              baseReconnectDelay * Math.pow(1.3, reconnectAttempts - 15)
+            );
+          }
         } else {
-          // Standard exponential backoff with less aggressive growth
+          // Standard exponential backoff with gentler growth for normal closures
           exponentialDelay = Math.min(
             maxReconnectDelay, 
             baseReconnectDelay * Math.pow(1.3, reconnectAttempts - 1)
           );
         }
         
-        // Add jitter to prevent reconnection thundering herd
-        const jitter = 0.1 * exponentialDelay * Math.random();
+        // Add jitter to prevent reconnection thundering herd problem
+        // Reduced jitter for abnormal closures to make reconnections more predictable
+        const jitterFactor = isAbnormalClosure ? 0.05 : 0.1;
+        const jitter = jitterFactor * exponentialDelay * Math.random();
         const delay = Math.floor(exponentialDelay + jitter);
         
         console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${currentMaxAttempts})`);
         connectionStatus = 'reconnecting';
         isReconnecting = true;
         lastUpdateTime = Date.now();
+        
+        // Record timestamp of this reconnection attempt for metrics
+        const reconnectTimestamp = Date.now();
+        
         emitWsEvent('ws:reconnecting', { 
           attempt: reconnectAttempts, 
           maxAttempts: currentMaxAttempts,
           delay,
-          abnormalClosure: isAbnormalClosure
+          abnormalClosure: isAbnormalClosure,
+          timestamp: reconnectTimestamp
         });
         
         // Schedule reconnect with delay
         reconnectTimeout = window.setTimeout(() => {
           reconnectTimeout = null;
+          
+          // For abnormal closures, check if we need to try alternative strategies
+          if (isAbnormalClosure && reconnectAttempts > 10 && reconnectAttempts % 5 === 0) {
+            // Every 5 attempts after the 10th, try different WebSocket construction approach
+            console.log("Trying alternative connection approach due to persistent abnormal closures");
+            
+            // Add tracking of connection issues to help diagnose
+            localStorage.setItem('websocket_reconnect_history', JSON.stringify({
+              lastAttempt: reconnectTimestamp,
+              totalAttempts: reconnectAttempts,
+              abnormalClosures: (parseInt(localStorage.getItem('abnormal_closures') || '0') + 1).toString()
+            }));
+          }
+          
           // Try a fresh connection by clearing any old state
           createWebSocketConnection();
         }, delay);
@@ -253,18 +296,25 @@ export function createWebSocketConnection(): WebSocket {
         console.error(`WebSocket reconnection failed after ${reconnectAttempts} attempts`);
         emitWsEvent('ws:disconnected', { permanent: true });
         
-        // Last resort: try again after a longer delay
+        // Last resort: try again after a longer delay with reset counter
         reconnectTimeout = window.setTimeout(() => {
           reconnectAttempts = 0;
-          // Force page refresh if we've been trying for a very long time
-          if (isAbnormalClosure && Math.random() < 0.1) {
-            // In 10% of cases, suggest a page reload to the user via an event
+          connectionAttempts++;
+          
+          // After multiple rounds of reconnection attempts, try a more drastic approach
+          if (connectionAttempts > 3) {
+            // Suggest a page reload to the user via an event
             emitWsEvent('ws:suggest_reload', {
               message: "Connection issues detected. Please reload the page for better performance."
             });
+            
+            // Still try to reconnect anyway
+            createWebSocketConnection();
+          } else {
+            // Just try a standard reconnect
+            createWebSocketConnection();
           }
-          createWebSocketConnection();
-        }, 30000); // Wait 30 seconds before trying again
+        }, 10000); // Wait 10 seconds before trying again (reduced from 30s)
       }
     };
     
