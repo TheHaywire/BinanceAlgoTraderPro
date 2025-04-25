@@ -1,19 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2, RefreshCw, X, AlertCircle, AlertTriangle, Info, Download } from 'lucide-react';
+import ws from '@/lib/websocket';
 
-// Log entry interface
 interface LogEntry {
   id: string;
   timestamp: number;
@@ -23,6 +18,31 @@ interface LogEntry {
   data?: any;
 }
 
+// Define badge colors for different log levels
+const logLevelColors = {
+  info: 'bg-blue-500',
+  warn: 'bg-amber-500',
+  error: 'bg-red-500',
+  debug: 'bg-slate-500'
+};
+
+// Define badge colors for different sources
+const sourceColors = {
+  system: 'bg-purple-500',
+  trading: 'bg-green-500',
+  websocket: 'bg-cyan-500',
+  binance: 'bg-amber-500',
+  http: 'bg-blue-500',
+  default: 'bg-slate-500'
+};
+
+const iconMap = {
+  info: <Info className="h-4 w-4" />,
+  warn: <AlertTriangle className="h-4 w-4" />,
+  error: <AlertCircle className="h-4 w-4" />,
+  debug: <Info className="h-4 w-4" />
+};
+
 interface LogViewerProps {
   className?: string;
   maxEntries?: number;
@@ -30,212 +50,508 @@ interface LogViewerProps {
 
 export default function LogViewer({ className, maxEntries = 500 }: LogViewerProps) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [filter, setFilter] = useState<string>("all");
+  const [activeFilter, setActiveFilter] = useState<string>('all');
   const [autoScroll, setAutoScroll] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  
-  // Fetch initial logs
+
+  // Fetch logs from API
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['/api/system/logs'],
+    refetchInterval: 0, // We'll use WebSocket for real-time updates
+  });
+
+  // Subscribe to log updates via WebSocket
   useEffect(() => {
-    fetch('/api/system/logs')
-      .then(response => response.json())
-      .then(data => {
-        setLogs(data.logs || []);
-      })
-      .catch(error => {
-        console.error("Failed to fetch logs:", error);
-      });
-  }, []);
-  
-  // Setup WebSocket subscription for real-time logs
-  useEffect(() => {
-    const socket = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`);
-    
-    socket.onopen = () => {
-      socket.send(JSON.stringify({
-        type: 'subscribe',
-        channel: 'system_logs'
-      }));
-    };
-    
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        
-        // Handle system logs messages
-        if (message.type === 'system_log') {
-          if (!isPaused) {
-            setLogs(prevLogs => {
-              const newLogs = [...prevLogs, message.data];
-              // Limit the number of logs to prevent memory issues
-              return newLogs.slice(-maxEntries);
-            });
+    // Initial subscription to logs
+    ws.subscribe('system_logs');
+
+    // Handle incoming logs
+    const handleLogUpdate = (message: any) => {
+      if (message.type === 'system_log') {
+        setLogs(prevLogs => {
+          // Avoid duplicates by checking IDs
+          if (!prevLogs.some(log => log.id === message.data.id)) {
+            const newLogs = [message.data, ...prevLogs];
+            // Keep only maxEntries logs
+            return newLogs.slice(0, maxEntries);
           }
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+          return prevLogs;
+        });
       }
     };
-    
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-    
+
+    // Register message handler
+    ws.registerHandler('system_log', handleLogUpdate);
+
+    // Initial data load
+    if (data) {
+      setLogs(data);
+    }
+
+    // Cleanup
     return () => {
-      socket.close();
+      ws.unsubscribe('system_logs');
+      ws.unregisterHandler('system_log', handleLogUpdate);
     };
-  }, [maxEntries, isPaused]);
-  
-  // Auto-scroll to bottom when new logs arrive
+  }, [data, maxEntries]);
+
+  // Auto-scroll to bottom when new logs are added
   useEffect(() => {
     if (autoScroll && scrollAreaRef.current) {
-      const scrollableElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollableElement) {
-        scrollableElement.scrollTop = scrollableElement.scrollHeight;
-      }
+      scrollAreaRef.current.scrollTop = 0;
     }
   }, [logs, autoScroll]);
-  
-  // Filter logs based on selected level
-  const filteredLogs = filter === 'all' 
-    ? logs 
-    : logs.filter(log => log.level === filter);
-  
-  // Clear logs
-  const handleClearLogs = () => {
-    setLogs([]);
-    toast({
-      title: "Logs Cleared",
-      description: "All log entries have been cleared from the viewer",
-    });
+
+  // Handle clear logs
+  const handleClearLogs = async () => {
+    try {
+      const response = await fetch('/api/system/logs/clear', {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        setLogs([]);
+        toast({
+          title: 'Logs cleared',
+          description: 'All system logs have been cleared.',
+        });
+      } else {
+        throw new Error('Failed to clear logs');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to clear logs.',
+        variant: 'destructive',
+      });
+    }
   };
-  
-  // Export logs
-  const handleExportLogs = () => {
-    const logText = logs.map(log => 
-      `[${new Date(log.timestamp).toISOString()}] [${log.level.toUpperCase()}] ${log.source ? `[${log.source}] ` : ''}${log.message}${log.data ? ' ' + JSON.stringify(log.data) : ''}`
-    ).join('\n');
-    
-    const blob = new Blob([logText], { type: 'text/plain' });
+
+  // Filter logs based on activeFilter
+  const filteredLogs = logs.filter(log => {
+    if (activeFilter === 'all') return true;
+    return log.level === activeFilter || log.source === activeFilter;
+  });
+
+  // Format timestamp
+  const formatTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString() + '.' + date.getMilliseconds().toString().padStart(3, '0');
+  };
+
+  // Export logs to file
+  const exportLogs = () => {
+    const logData = JSON.stringify(logs, null, 2);
+    const blob = new Blob([logData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `algotrader-logs-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+    a.download = `algotrader-logs-${new Date().toISOString()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Logs Exported",
-      description: "Log file has been downloaded to your device",
-    });
   };
-  
+
   return (
-    <div className={`bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4 ${className}`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium">System Logs</h3>
-        <div className="flex space-x-2 items-center">
-          <div className="flex items-center mr-4 space-x-2">
-            <Switch 
-              id="pause-logs" 
-              checked={isPaused} 
-              onCheckedChange={setIsPaused} 
-            />
-            <Label htmlFor="pause-logs" className="text-sm">{isPaused ? 'Paused' : 'Live'}</Label>
-          </div>
-          
-          <div className="flex items-center mr-4 space-x-2">
-            <Switch 
-              id="auto-scroll" 
-              checked={autoScroll} 
-              onCheckedChange={setAutoScroll} 
-            />
-            <Label htmlFor="auto-scroll" className="text-sm">Auto-scroll</Label>
-          </div>
-          
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[130px] h-8">
-              <SelectValue placeholder="Filter by level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="info">Info</SelectItem>
-              <SelectItem value="warn">Warnings</SelectItem>
-              <SelectItem value="error">Errors</SelectItem>
-              <SelectItem value="debug">Debug</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button variant="outline" size="sm" onClick={handleClearLogs} className="h-8">
-            Clear
+    <Card className={className}>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-xl font-bold">System Logs</CardTitle>
+        <div className="flex space-x-2">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => refetch()}
+            title="Refresh logs"
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Refresh
           </Button>
-          
-          <Button variant="outline" size="sm" onClick={handleExportLogs} className="h-8">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={exportLogs}
+            title="Export logs"
+          >
+            <Download className="h-4 w-4 mr-1" />
             Export
           </Button>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleClearLogs}
+            title="Clear all logs"
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
         </div>
-      </div>
-      
-      <div className="relative">
-        <ScrollArea ref={scrollAreaRef} className="h-[400px] rounded-lg border border-[rgba(73,86,118,0.2)] bg-[rgba(10,15,28,0.4)]">
-          <div className="p-2 space-y-1 font-mono text-xs">
-            {filteredLogs.length === 0 ? (
-              <div className="flex items-center justify-center h-20 text-neutral-400">
-                No log entries to display
-              </div>
-            ) : (
-              filteredLogs.map((log) => (
-                <div key={log.id} className="flex">
-                  <div className="whitespace-nowrap text-neutral-400 mr-2">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </div>
-                  
-                  <Badge className={`mr-2 ${
-                    log.level === 'error' ? 'bg-[rgba(255,59,105,0.1)] text-[#FF3B69] border-[rgba(255,59,105,0.2)]' :
-                    log.level === 'warn' ? 'bg-[rgba(255,187,0,0.1)] text-[#FFB800] border-[rgba(255,187,0,0.2)]' :
-                    log.level === 'info' ? 'bg-[rgba(0,149,255,0.1)] text-[#0095FF] border-[rgba(0,149,255,0.2)]' :
-                    'bg-[rgba(85,85,90,0.1)] text-neutral-400 border-[rgba(85,85,90,0.2)]'
-                  }`}>
-                    {log.level}
-                  </Badge>
-                  
-                  {log.source && (
-                    <div className="text-neutral-500 mr-2 truncate max-w-[100px]">
-                      [{log.source}]
-                    </div>
-                  )}
-                  
-                  <div className="text-neutral-200 break-all">
-                    {log.message}
-                    {log.data && (
-                      <span className="text-neutral-400 ml-1">
-                        {typeof log.data === 'object' 
-                          ? JSON.stringify(log.data) 
-                          : log.data.toString()}
-                      </span>
-                    )}
-                  </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Tabs defaultValue="all" className="w-full">
+          <div className="border-b px-6">
+            <TabsList className="flex justify-start">
+              <TabsTrigger 
+                value="all" 
+                onClick={() => setActiveFilter('all')}
+                className="relative"
+              >
+                All
+                <Badge className="ml-2 bg-slate-500">{logs.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="info" 
+                onClick={() => setActiveFilter('info')}
+                className="relative"
+              >
+                Info
+                <Badge className="ml-2 bg-blue-500">
+                  {logs.filter(log => log.level === 'info').length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="warn" 
+                onClick={() => setActiveFilter('warn')}
+                className="relative"
+              >
+                Warnings
+                <Badge className="ml-2 bg-amber-500">
+                  {logs.filter(log => log.level === 'warn').length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="error" 
+                onClick={() => setActiveFilter('error')}
+                className="relative"
+              >
+                Errors
+                <Badge className="ml-2 bg-red-500">
+                  {logs.filter(log => log.level === 'error').length}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="debug" 
+                onClick={() => setActiveFilter('debug')}
+                className="relative"
+              >
+                Debug
+                <Badge className="ml-2 bg-slate-500">
+                  {logs.filter(log => log.level === 'debug').length}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <TabsContent value="all" className="m-0">
+            <ScrollArea 
+              className="h-[400px] px-4" 
+              ref={scrollAreaRef}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-              ))
-            )}
-          </div>
-        </ScrollArea>
-        
-        {isPaused && (
-          <div className="absolute top-2 right-2">
-            <Badge className="bg-[rgba(255,187,0,0.1)] text-[#FFB800] border-[rgba(255,187,0,0.2)]">
-              Logging Paused
-            </Badge>
-          </div>
-        )}
-        
-        <div className="text-xs text-neutral-400 mt-2">
-          Showing {filteredLogs.length} of {logs.length} log entries
-        </div>
-      </div>
-    </div>
+              ) : isError ? (
+                <div className="flex items-center justify-center h-full text-red-500">
+                  Error loading logs. Please try again.
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No logs to display.
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  {filteredLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="border rounded p-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full mr-1 ${logLevelColors[log.level]}`}>
+                            {iconMap[log.level]}
+                          </span>
+                          <span className="font-medium">{formatTimestamp(log.timestamp)}</span>
+                        </div>
+                        
+                        <Badge 
+                          className={`${logLevelColors[log.level]} ml-2`}
+                          variant="secondary"
+                        >
+                          {log.level}
+                        </Badge>
+                        
+                        {log.source && (
+                          <Badge 
+                            className={sourceColors[log.source as keyof typeof sourceColors] || sourceColors.default}
+                            variant="secondary"
+                          >
+                            {log.source}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="ml-6">
+                        <p>{log.message}</p>
+                        {log.data && (
+                          <pre className="mt-1 text-xs bg-accent/50 p-1 rounded overflow-x-auto">
+                            {typeof log.data === 'object' 
+                              ? JSON.stringify(log.data, null, 2)
+                              : log.data.toString()}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+          
+          {/* Duplicate TabsContent for each tab just with different value */}
+          <TabsContent value="info" className="m-0">
+            <ScrollArea className="h-[400px] px-4" ref={scrollAreaRef}>
+              {/* Same content as "all" tab */}
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No logs to display.
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  {filteredLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="border rounded p-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full mr-1 ${logLevelColors[log.level]}`}>
+                            {iconMap[log.level]}
+                          </span>
+                          <span className="font-medium">{formatTimestamp(log.timestamp)}</span>
+                        </div>
+                        
+                        <Badge 
+                          className={`${logLevelColors[log.level]} ml-2`}
+                          variant="secondary"
+                        >
+                          {log.level}
+                        </Badge>
+                        
+                        {log.source && (
+                          <Badge 
+                            className={sourceColors[log.source as keyof typeof sourceColors] || sourceColors.default}
+                            variant="secondary"
+                          >
+                            {log.source}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="ml-6">
+                        <p>{log.message}</p>
+                        {log.data && (
+                          <pre className="mt-1 text-xs bg-accent/50 p-1 rounded overflow-x-auto">
+                            {typeof log.data === 'object' 
+                              ? JSON.stringify(log.data, null, 2)
+                              : log.data.toString()}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+
+          {/* Repeat for other tabs */}
+          <TabsContent value="warn" className="m-0">
+            <ScrollArea className="h-[400px] px-4" ref={scrollAreaRef}>
+              {/* Same content structure */}
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No logs to display.
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  {filteredLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="border rounded p-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full mr-1 ${logLevelColors[log.level]}`}>
+                            {iconMap[log.level]}
+                          </span>
+                          <span className="font-medium">{formatTimestamp(log.timestamp)}</span>
+                        </div>
+                        
+                        <Badge 
+                          className={`${logLevelColors[log.level]} ml-2`}
+                          variant="secondary"
+                        >
+                          {log.level}
+                        </Badge>
+                        
+                        {log.source && (
+                          <Badge 
+                            className={sourceColors[log.source as keyof typeof sourceColors] || sourceColors.default}
+                            variant="secondary"
+                          >
+                            {log.source}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="ml-6">
+                        <p>{log.message}</p>
+                        {log.data && (
+                          <pre className="mt-1 text-xs bg-accent/50 p-1 rounded overflow-x-auto">
+                            {typeof log.data === 'object' 
+                              ? JSON.stringify(log.data, null, 2)
+                              : log.data.toString()}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+          
+          <TabsContent value="error" className="m-0">
+            <ScrollArea className="h-[400px] px-4" ref={scrollAreaRef}>
+              {/* Same content structure */}
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No logs to display.
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  {filteredLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="border rounded p-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full mr-1 ${logLevelColors[log.level]}`}>
+                            {iconMap[log.level]}
+                          </span>
+                          <span className="font-medium">{formatTimestamp(log.timestamp)}</span>
+                        </div>
+                        
+                        <Badge 
+                          className={`${logLevelColors[log.level]} ml-2`}
+                          variant="secondary"
+                        >
+                          {log.level}
+                        </Badge>
+                        
+                        {log.source && (
+                          <Badge 
+                            className={sourceColors[log.source as keyof typeof sourceColors] || sourceColors.default}
+                            variant="secondary"
+                          >
+                            {log.source}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="ml-6">
+                        <p>{log.message}</p>
+                        {log.data && (
+                          <pre className="mt-1 text-xs bg-accent/50 p-1 rounded overflow-x-auto">
+                            {typeof log.data === 'object' 
+                              ? JSON.stringify(log.data, null, 2)
+                              : log.data.toString()}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+          
+          <TabsContent value="debug" className="m-0">
+            <ScrollArea className="h-[400px] px-4" ref={scrollAreaRef}>
+              {/* Same content structure */}
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filteredLogs.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No logs to display.
+                </div>
+              ) : (
+                <div className="space-y-2 pt-2">
+                  {filteredLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className="border rounded p-2 text-sm hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center">
+                          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full mr-1 ${logLevelColors[log.level]}`}>
+                            {iconMap[log.level]}
+                          </span>
+                          <span className="font-medium">{formatTimestamp(log.timestamp)}</span>
+                        </div>
+                        
+                        <Badge 
+                          className={`${logLevelColors[log.level]} ml-2`}
+                          variant="secondary"
+                        >
+                          {log.level}
+                        </Badge>
+                        
+                        {log.source && (
+                          <Badge 
+                            className={sourceColors[log.source as keyof typeof sourceColors] || sourceColors.default}
+                            variant="secondary"
+                          >
+                            {log.source}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="ml-6">
+                        <p>{log.message}</p>
+                        {log.data && (
+                          <pre className="mt-1 text-xs bg-accent/50 p-1 rounded overflow-x-auto">
+                            {typeof log.data === 'object' 
+                              ? JSON.stringify(log.data, null, 2)
+                              : log.data.toString()}
+                          </pre>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 }
