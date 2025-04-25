@@ -2,6 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom premium animations and effects */
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0.3; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px rgba(0, 112, 243, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(0, 200, 255, 0.7); }
+  100% { box-shadow: 0 0 5px rgba(0, 112, 243, 0.5); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+/* Custom color scheme with vibrant blues and teals */
+:root {
+  --color-primary: rgb(0, 112, 243);
+  --color-primary-light: rgb(0, 150, 255);
+  --color-secondary: rgb(0, 200, 255);
+  --color-accent: rgb(0, 255, 200);
+  --color-success: rgb(0, 220, 130);
+  --color-warning: rgb(255, 180, 0);
+  --color-danger: rgb(255, 50, 50);
+  --color-background-dark: rgb(10, 15, 30);
+  --color-background-darker: rgb(5, 10, 20);
+}
+
+/* Apply dark gradient background to html */
+html {
+  background: linear-gradient(135deg, var(--color-background-darker), var(--color-background-dark));
+  min-height: 100%;
+}
+
+/* Premium flat shadows for cards and elements */
+.premium-shadow-sm {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2), 
+             0 0 1px rgba(0, 150, 255, 0.3);
+}
+
+.premium-shadow {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 
+              0 0 2px rgba(0, 150, 255, 0.4);
+}
+
+.premium-shadow-lg {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 
+              0 0 3px rgba(0, 150, 255, 0.5);
+}
+
+/* Glowing border effect */
+.glow-border {
+  box-shadow: 0 0 5px rgba(0, 150, 255, 0.5);
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-border:hover {
+  box-shadow: 0 0 15px rgba(0, 200, 255, 0.7);
+}
+
+/* Animated glow border */
+.glow-border-animate {
+  animation: glow 4s infinite ease-in-out;
+}
+
+/* Dashboard-specific styles */
+.dashboard-card {
+  @apply bg-slate-900/70 backdrop-blur-sm rounded-lg border border-slate-800 premium-shadow;
+}
+
+.dashboard-card-header {
+  @apply font-semibold text-sm text-slate-300 p-3 border-b border-slate-800;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.9), rgba(0, 112, 243, 0.1));
+}
+
+/* Gradient text for headings */
+.gradient-text {
+  @apply font-bold text-transparent bg-clip-text;
+  background-image: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+}
+
+/* Floating animation for cards */
+.float-animation {
+  animation: float 6s infinite ease-in-out;
+}
+
+/* Shimmer effect for loading states */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0),
+    rgba(0, 150, 255, 0.1),
+    rgba(30, 41, 59, 0)
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
 :root {
   /* Ultra Premium Dark Mode Foundation - Deeper, richer base */
   --background: 225 30% 7%;

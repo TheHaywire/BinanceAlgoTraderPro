@@ -9,6 +9,8 @@ import PortfolioDiversification from "@/components/dashboard/PortfolioDiversific
 import LogViewer from "@/components/system/LogViewer";
 import TechnicalAnalysis from "@/components/dashboard/TechnicalAnalysis";
 import StrategyAnalyzer from "@/components/dashboard/StrategyAnalyzer";
+import ParticleBackground from "@/components/ui/ParticleBackground";
+import GlowingCard from "@/components/ui/GlowingCard";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
