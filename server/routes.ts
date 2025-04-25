@@ -10,6 +10,7 @@ import { generateOpportunities } from "./trading/strategies";
 import { tradingCore } from "./trading/core";
 import { portfolioAnalyzer } from "./trading/portfolio";
 import WebSocket from "ws";
+import { setupLogRoutes, addSystemLog } from "./routes/logs";
 
 const wsClients: Set<WebSocket> = new Set();
 const binanceWs = new BinanceWebSocketClient(true); // Use testnet
@@ -169,6 +170,12 @@ import apiRoutes from "./routes/index";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize trading data
   await initializeData();
+  
+  // Set up system logs routes
+  setupLogRoutes(app);
+  
+  // Log system start
+  addSystemLog('info', 'AlgoTrader system initialized', 'system');
   
   // Mount API routes
   app.use("/api/trading", apiRoutes);
