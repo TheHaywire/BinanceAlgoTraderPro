@@ -11,7 +11,7 @@ interface PerformanceMetricsProps {
 }
 
 export default function PerformanceMetrics({ metrics, strategyPerformance, isLoading }: PerformanceMetricsProps) {
-  if (isLoading) {
+  if (isLoading || !metrics) {
     return (
       <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4 animate-pulse">
         <div className="h-6 bg-gray-700 rounded w-1/4 mb-4"></div>
@@ -23,6 +23,9 @@ export default function PerformanceMetrics({ metrics, strategyPerformance, isLoa
       </div>
     );
   }
+  
+  // Ensure metrics is an object with default values
+  const safeMetrics = metrics || {};
 
   return (
     <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
@@ -40,12 +43,12 @@ export default function PerformanceMetrics({ metrics, strategyPerformance, isLoa
         <div className="bg-[rgba(10,15,28,0.3)] rounded-xl p-4">
           <div className="text-sm text-neutral-400 mb-2">Trade P&L</div>
           <div className="text-xl font-bold text-white">
-            {parseFloat(metrics.totalPnL || "0") >= 0 ? "+" : ""}
-            {metrics.totalPnL || "0.00"} USDT
+            {parseFloat(safeMetrics.totalPnL || "0") >= 0 ? "+" : ""}
+            {safeMetrics.totalPnL || "0.00"} USDT
           </div>
           <div className="text-sm text-neutral-400">
-            Total return {parseFloat(metrics.totalPnLPercent || "0") >= 0 ? "+" : ""}
-            {metrics.totalPnLPercent || "0.00"}%
+            Total return {parseFloat(safeMetrics.totalPnLPercent || "0") >= 0 ? "+" : ""}
+            {safeMetrics.totalPnLPercent || "0.00"}%
           </div>
           <div className="mt-2 h-24 flex items-end">
             <div className="flex-1 h-3/4 bg-[rgba(0,149,255,0.1)] flex items-end justify-center rounded-t-md">
@@ -71,23 +74,23 @@ export default function PerformanceMetrics({ metrics, strategyPerformance, isLoa
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-neutral-300">Win/Loss Ratio</span>
-              <span className="text-sm font-medium">{metrics.winRate || "0.00"}%</span>
+              <span className="text-sm font-medium">{safeMetrics.winRate || "0.00"}%</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-neutral-300">Total Trades</span>
-              <span className="text-sm font-medium">{metrics.totalTrades || 0}</span>
+              <span className="text-sm font-medium">{safeMetrics.totalTrades || 0}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-neutral-300">Sharpe Ratio</span>
-              <span className="text-sm font-medium">{metrics.sharpeRatio || "0.00"}</span>
+              <span className="text-sm font-medium">{safeMetrics.sharpeRatio || "0.00"}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-neutral-300">Max Drawdown</span>
-              <span className="text-sm font-medium">{metrics.maxDrawdown || "0.00"}%</span>
+              <span className="text-sm font-medium">{safeMetrics.maxDrawdown || "0.00"}%</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-neutral-300">Avg. Trade Duration</span>
-              <span className="text-sm font-medium">{metrics.avgTradeDuration || "0"} min</span>
+              <span className="text-sm font-medium">{safeMetrics.avgTradeDuration || "0"} min</span>
             </div>
           </div>
         </div>

@@ -9,8 +9,27 @@ let pingTimeout: number | null = null;
 let wsInstance: WebSocket | null = null;
 let pendingSubscriptions: { type: string; channel: string; data?: any }[] = [];
 let connectionAttempts = 0;
-let connectionStatus = 'disconnected';
+let connectionStatus: 'connected' | 'connecting' | 'disconnected' | 'reconnecting' = 'disconnected';
 let isReconnecting = false;
+let lastUpdateTime = Date.now();
+
+// Connection Status interface
+export interface ConnectionStatus {
+  status: 'connected' | 'connecting' | 'disconnected' | 'reconnecting';
+  lastUpdateTime: number;
+  isReconnecting: boolean;
+  reconnectAttempts: number;
+}
+
+// Get current WebSocket connection status
+export function getConnectionStatus(): ConnectionStatus {
+  return {
+    status: connectionStatus,
+    lastUpdateTime: lastUpdateTime,
+    isReconnecting,
+    reconnectAttempts: connectionAttempts
+  };
+}
 
 // Custom events for WebSocket status
 const emitWsEvent = (eventName: string, detail = {}) => {
@@ -60,6 +79,7 @@ export function createWebSocketConnection(): WebSocket {
       isReconnecting = false;
       lastMessageTime = Date.now();
       lastPingTime = Date.now();
+      lastUpdateTime = Date.now();
       connectionStatus = 'connected';
       wsInstance = socket;
       
@@ -170,6 +190,7 @@ export function createWebSocketConnection(): WebSocket {
     socket.onclose = (event) => {
       console.warn(`WebSocket closed: ${event.code} ${event.reason || ''}`);
       connectionStatus = 'disconnected';
+      lastUpdateTime = Date.now();
       
       // Special handling for code 1006 (abnormal closure) which happens frequently in Replit
       const isAbnormalClosure = event.code === 1006;
@@ -212,6 +233,9 @@ export function createWebSocketConnection(): WebSocket {
         const delay = Math.floor(exponentialDelay + jitter);
         
         console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${currentMaxAttempts})`);
+        connectionStatus = 'reconnecting';
+        isReconnecting = true;
+        lastUpdateTime = Date.now();
         emitWsEvent('ws:reconnecting', { 
           attempt: reconnectAttempts, 
           maxAttempts: currentMaxAttempts,
