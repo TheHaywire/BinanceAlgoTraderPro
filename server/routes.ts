@@ -1125,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Send system logs
             if (ws.readyState === WebSocket.OPEN) {
               try {
-                const { getLogs } = require('./routes/logs');
+                // Using imported getLogs function from the top of the file
                 const logs = getLogs();
                 
                 ws.send(JSON.stringify({

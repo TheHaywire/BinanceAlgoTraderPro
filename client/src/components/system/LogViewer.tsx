@@ -67,22 +67,28 @@ export default function LogViewer({ className, maxEntries = 500 }: LogViewerProp
     ws.subscribe('system_logs');
 
     // Handle incoming logs
-    const handleLogUpdate = (message: any) => {
-      if (message.type === 'system_log') {
+    const handleLogUpdate = (messageData: any) => {
+      // Handle single log entry (real-time update)
+      if (messageData && messageData.id) {
         setLogs(prevLogs => {
           // Avoid duplicates by checking IDs
-          if (!prevLogs.some(log => log.id === message.data.id)) {
-            const newLogs = [message.data, ...prevLogs];
+          if (!prevLogs.some(log => log.id === messageData.id)) {
+            const newLogs = [messageData, ...prevLogs];
             // Keep only maxEntries logs
             return newLogs.slice(0, maxEntries);
           }
           return prevLogs;
         });
       }
+      // Handle array of logs (initial load)
+      else if (Array.isArray(messageData)) {
+        setLogs(messageData.slice(0, maxEntries));
+      }
     };
 
-    // Register message handler
+    // Register message handlers for both single log entries and bulk log data
     ws.registerHandler('system_log', handleLogUpdate);
+    ws.registerHandler('system_logs', handleLogUpdate);
 
     // Initial data load
     if (data) {
@@ -93,6 +99,7 @@ export default function LogViewer({ className, maxEntries = 500 }: LogViewerProp
     return () => {
       ws.unsubscribe('system_logs');
       ws.unregisterHandler('system_log', handleLogUpdate);
+      ws.unregisterHandler('system_logs', handleLogUpdate);
     };
   }, [data, maxEntries]);
 

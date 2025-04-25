@@ -36,6 +36,7 @@ export function createWebSocketConnection(): WebSocket {
   // Construct a stable WebSocket URL
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.host;
+  // Use a cleaner path that works with Replit's proxying
   const wsUrl = `${protocol}//${host}/ws`;
   
   console.log(`Creating WebSocket connection to ${wsUrl}`);
@@ -254,6 +255,16 @@ export function createWebSocketConnection(): WebSocket {
         // Handle opportunityUpdate messages specifically
         if (message.type === 'opportunityUpdate') {
           emitWsEvent('ws:opportunity_update', message.data);
+        }
+        
+        // Handle system_logs messages specifically
+        if (message.type === 'system_logs') {
+          emitWsEvent('system_logs', message.data);
+        }
+        
+        // Handle system_log (individual log) messages
+        if (message.type === 'system_log') {
+          emitWsEvent('system_log', message.data);
         }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
