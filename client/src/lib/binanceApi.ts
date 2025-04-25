@@ -1,4 +1,4 @@
-import { apiRequest } from "./queryClient";
+import { apiRequest, apiMutations } from "./queryClient";
 import { MarketData, Candle, Position, ExecutionOrder } from "./types";
 
 const API_BASE = "/api/binance";
@@ -35,8 +35,7 @@ export async function getPositions(): Promise<Position[]> {
  */
 export async function createOrder(order: ExecutionOrder): Promise<any> {
   const endpoint = `${API_BASE}/order`;
-  const response = await apiRequest(endpoint, "POST", order);
-  return response.json();
+  return apiMutations.post(endpoint, order);
 }
 
 /**
@@ -44,8 +43,7 @@ export async function createOrder(order: ExecutionOrder): Promise<any> {
  */
 export async function cancelOrder(symbol: string, orderId: string): Promise<any> {
   const endpoint = `${API_BASE}/order?symbol=${symbol}&orderId=${orderId}`;
-  const response = await apiRequest(endpoint, "DELETE");
-  return response.json();
+  return apiMutations.delete(endpoint);
 }
 
 /**
@@ -53,8 +51,7 @@ export async function cancelOrder(symbol: string, orderId: string): Promise<any>
  */
 export async function setLeverage(symbol: string, leverage: number): Promise<any> {
   const endpoint = `${API_BASE}/leverage`;
-  const response = await apiRequest(endpoint, "POST", { symbol, leverage });
-  return response.json();
+  return apiMutations.post(endpoint, { symbol, leverage });
 }
 
 /**
@@ -97,11 +94,11 @@ export async function getRiskMetrics(): Promise<any> {
  * Execute a trading opportunity
  */
 export async function executeTradingOpportunity(opportunityId: string): Promise<any> {
-  // Fix the API endpoint URL format to ensure it's properly sent to the server
   const endpoint = `${API_BASE}/execute`;
   console.log(`Executing opportunity: ${opportunityId} via ${endpoint}`);
-  const response = await apiRequest(endpoint, "POST", { opportunityId });
-  return response.json();
+  
+  // Use apiMutations.post for better error handling and consistent API call format
+  return apiMutations.post(endpoint, { opportunityId });
 }
 
 /**
@@ -109,8 +106,9 @@ export async function executeTradingOpportunity(opportunityId: string): Promise<
  */
 export async function closePosition(symbol: string, positionSide: 'LONG' | 'SHORT' | 'BOTH'): Promise<any> {
   const endpoint = `${API_BASE}/close-position`;
-  const response = await apiRequest(endpoint, "POST", { symbol, positionSide });
-  return response.json();
+  
+  // Use apiMutations.post for better error handling and consistent API call format
+  return apiMutations.post(endpoint, { symbol, positionSide });
 }
 
 /**
@@ -123,11 +121,12 @@ export async function setTPSL(
   profitPrice?: string
 ): Promise<any> {
   const endpoint = `${API_BASE}/tpsl`;
-  const response = await apiRequest(endpoint, "POST", { 
+  
+  // Use apiMutations.post for better error handling and consistent API call format
+  return apiMutations.post(endpoint, { 
     symbol, 
     positionSide,
     stopPrice,
     profitPrice 
   });
-  return response.json();
 }

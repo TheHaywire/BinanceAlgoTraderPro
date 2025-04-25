@@ -6,6 +6,7 @@ let heartbeatInterval: number | null = null;
 let reconnectTimeout: number | null = null;
 let wsInstance: WebSocket | null = null;
 let pendingSubscriptions: { type: string; channel: string; data?: any }[] = [];
+let connectionAttempts = 0;
 
 // Custom events for WebSocket status
 const emitWsEvent = (eventName: string, detail = {}) => {
@@ -28,141 +29,251 @@ export function createWebSocketConnection(): WebSocket {
     reconnectTimeout = null;
   }
   
+  // Construct a stable WebSocket URL
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  const host = window.location.host;
+  const wsUrl = `${protocol}//${host}/ws`;
   
-  const socket = new WebSocket(wsUrl);
-  let reconnectAttempts = 0;
-  const maxReconnectAttempts = 10; // Increased reconnection attempts
-  const baseReconnectDelay = 1000; // 1 second base delay
-  const maxReconnectDelay = 30000; // Maximum delay of 30 seconds
+  console.log(`Creating WebSocket connection to ${wsUrl}`);
   
-  // Start at connected state until we're proven wrong
-  emitWsEvent('ws:connecting');
-  
-  socket.onopen = () => {
-    console.log("WebSocket connection established");
-    reconnectAttempts = 0;
-    lastMessageTime = Date.now();
-    wsInstance = socket;
-    emitWsEvent('ws:open');
+  try {
+    const socket = new WebSocket(wsUrl);
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 20; // Increased reconnection attempts
+    const baseReconnectDelay = 1000; // 1 second base delay
+    const maxReconnectDelay = 30000; // Maximum delay of 30 seconds
     
-    // Resubscribe to any pending subscriptions
-    if (pendingSubscriptions.length > 0) {
-      console.log(`Resubscribing to ${pendingSubscriptions.length} channels...`);
-      pendingSubscriptions.forEach(sub => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify(sub));
-        }
-      });
-    }
+    // Start at connecting state
+    emitWsEvent('ws:connecting');
     
-    // Set up heartbeat check to detect stale connections
-    if (heartbeatInterval) {
-      window.clearInterval(heartbeatInterval);
-    }
-    
-    heartbeatInterval = window.setInterval(() => {
-      const now = Date.now();
-      const timeSinceLastMessage = now - lastMessageTime;
+    socket.onopen = () => {
+      console.log("WebSocket connection established");
+      reconnectAttempts = 0;
+      connectionAttempts = 0;
+      lastMessageTime = Date.now();
+      wsInstance = socket;
+      emitWsEvent('ws:open');
       
-      // If no message received for more than 30 seconds, consider connection stale
-      if (timeSinceLastMessage > 30000) {
-        console.warn(`No WebSocket messages received for ${Math.floor(timeSinceLastMessage / 1000)}s, connection may be stale`);
-        emitWsEvent('ws:stale', { lastMessageTime });
-        
-        // Send a ping to check if connection is still alive
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({ type: 'ping', timestamp: now }));
-        }
-        
-        // If extremely stale (over 2 minutes), force close and reconnect
-        if (timeSinceLastMessage > 120000) {
-          console.error("Connection extremely stale, forcing reconnection");
-          socket.close();
-        }
+      // Immediately send an initial ping to verify connection
+      socket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+      
+      // Resubscribe to any pending subscriptions with a slight delay
+      // to ensure the connection is stable
+      if (pendingSubscriptions.length > 0) {
+        setTimeout(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            console.log(`Resubscribing to ${pendingSubscriptions.length} channels...`);
+            pendingSubscriptions.forEach(sub => {
+              try {
+                socket.send(JSON.stringify(sub));
+                console.log(`Resubscribed to: ${sub.channel}`);
+              } catch (error) {
+                console.error(`Failed to resubscribe to ${sub.channel}:`, error);
+              }
+            });
+          }
+        }, 500);
       }
-    }, 10000); // Check every 10 seconds
-  };
-  
-  socket.onclose = (event) => {
-    console.warn(`WebSocket closed: ${event.code} ${event.reason}`);
-    
-    // Clean up heartbeat interval
-    if (heartbeatInterval) {
-      window.clearInterval(heartbeatInterval);
-      heartbeatInterval = null;
-    }
-    
-    // Implement exponential backoff for reconnections
-    if (reconnectAttempts < maxReconnectAttempts) {
-      reconnectAttempts++;
-      // Exponential backoff with jitter to prevent thundering herd
-      const exponentialDelay = Math.min(
-        maxReconnectDelay, 
-        baseReconnectDelay * Math.pow(1.5, reconnectAttempts - 1)
-      );
-      const jitter = 0.1 * exponentialDelay * Math.random();
-      const delay = Math.floor(exponentialDelay + jitter);
       
-      console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-      emitWsEvent('ws:reconnecting', { 
-        attempt: reconnectAttempts, 
-        maxAttempts: maxReconnectAttempts,
-        delay 
-      });
+      // Set up heartbeat check to detect stale connections
+      if (heartbeatInterval) {
+        window.clearInterval(heartbeatInterval);
+      }
       
-      // Schedule reconnect
-      reconnectTimeout = window.setTimeout(() => {
-        reconnectTimeout = null;
+      heartbeatInterval = window.setInterval(() => {
+        const now = Date.now();
+        const timeSinceLastMessage = now - lastMessageTime;
+        
+        // If no message received for more than 20 seconds, consider connection stale
+        if (timeSinceLastMessage > 20000) {
+          console.warn(`No WebSocket messages received for ${Math.floor(timeSinceLastMessage / 1000)}s, connection may be stale`);
+          emitWsEvent('ws:stale', { lastMessageTime });
+          
+          // Send a ping to check if connection is still alive
+          if (socket.readyState === WebSocket.OPEN) {
+            try {
+              socket.send(JSON.stringify({ type: 'ping', timestamp: now }));
+            } catch (error) {
+              console.error("Error sending ping:", error);
+            }
+          }
+          
+          // If extremely stale (over 1 minute), force close and reconnect
+          if (timeSinceLastMessage > 60000) {
+            console.error("Connection extremely stale, forcing reconnection");
+            try {
+              socket.close(1000, "Connection stale, forcing reconnect");
+            } catch (error) {
+              console.error("Error closing stale connection:", error);
+              // Reset connection anyway
+              wsInstance = null;
+              createWebSocketConnection();
+            }
+          }
+        }
+      }, 5000); // Check every 5 seconds
+    };
+    
+    socket.onclose = (event) => {
+      console.warn(`WebSocket closed: ${event.code} ${event.reason}`);
+      
+      // Clean up heartbeat interval
+      if (heartbeatInterval) {
+        window.clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+      
+      // Clear instance reference
+      if (wsInstance === socket) {
         wsInstance = null;
+      }
+      
+      // Implement exponential backoff for reconnections
+      if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        // Exponential backoff with jitter to prevent thundering herd
+        const exponentialDelay = Math.min(
+          maxReconnectDelay, 
+          baseReconnectDelay * Math.pow(1.5, reconnectAttempts - 1)
+        );
+        const jitter = 0.1 * exponentialDelay * Math.random();
+        const delay = Math.floor(exponentialDelay + jitter);
+        
+        console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+        emitWsEvent('ws:reconnecting', { 
+          attempt: reconnectAttempts, 
+          maxAttempts: maxReconnectAttempts,
+          delay 
+        });
+        
+        // Schedule reconnect
+        reconnectTimeout = window.setTimeout(() => {
+          reconnectTimeout = null;
+          createWebSocketConnection();
+        }, delay);
+      } else {
+        console.error(`WebSocket reconnection failed after ${maxReconnectAttempts} attempts`);
+        emitWsEvent('ws:disconnected', { permanent: true });
+        
+        // Last resort: try again after a longer delay
+        reconnectTimeout = window.setTimeout(() => {
+          reconnectAttempts = 0;
+          createWebSocketConnection();
+        }, 60000); // Wait a full minute before trying again
+      }
+    };
+    
+    socket.onmessage = (event) => {
+      // Update last message timestamp
+      lastMessageTime = Date.now();
+      
+      // Process message
+      try {
+        const message = JSON.parse(event.data);
+        
+        // Handle heartbeat responses
+        if (message.type === 'heartbeat') {
+          // Silently acknowledge heartbeat
+          emitWsEvent('ws:heartbeat', { timestamp: message.timestamp });
+          return;
+        }
+        
+        // Handle pong response
+        if (message.type === 'pong') {
+          console.log('Server responded to ping, connection alive');
+          return;
+        }
+        
+        // Handle system status messages
+        if (message.type === 'systemStatus') {
+          emitWsEvent('ws:system_status', message);
+        }
+        
+        // Handle marketUpdate messages specifically
+        if (message.type === 'marketUpdate') {
+          emitWsEvent('ws:market_update', message.data);
+        }
+        
+        // Handle positionUpdate messages specifically
+        if (message.type === 'positionUpdate') {
+          emitWsEvent('ws:position_update', message.data);
+        }
+        
+        // Handle opportunityUpdate messages specifically
+        if (message.type === 'opportunityUpdate') {
+          emitWsEvent('ws:opportunity_update', message.data);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+      
+      // Emit a general message received event for monitoring
+      emitWsEvent('ws:message_received');
+    };
+    
+    socket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      emitWsEvent('ws:error', { error });
+      
+      // Close the connection on error to trigger the reconnect logic
+      try {
+        socket.close(1006, "Connection error, triggering reconnect");
+      } catch (err) {
+        console.error("Error closing socket after error:", err);
+      }
+    };
+    
+    return socket;
+  } catch (error) {
+    console.error("Error creating WebSocket:", error);
+    
+    // Schedule a retry
+    reconnectTimeout = window.setTimeout(() => {
+      reconnectTimeout = null;
+      connectionAttempts++;
+      if (connectionAttempts < 10) {
         createWebSocketConnection();
-      }, delay);
-    } else {
-      console.error(`WebSocket reconnection failed after ${maxReconnectAttempts} attempts`);
-      emitWsEvent('ws:disconnected', { permanent: true });
-    }
-  };
-  
-  socket.onmessage = (event) => {
-    // Update last message timestamp
-    lastMessageTime = Date.now();
+      } else {
+        console.error("Failed to create WebSocket after multiple attempts");
+        emitWsEvent('ws:failed', { error });
+      }
+    }, 2000);
     
-    // Process message
-    try {
-      const message = JSON.parse(event.data);
-      
-      // Handle heartbeat responses
-      if (message.type === 'heartbeat') {
-        // Silently acknowledge heartbeat
-        emitWsEvent('ws:heartbeat', { timestamp: message.timestamp });
-        return;
-      }
-      
-      // Handle pong response
-      if (message.type === 'pong') {
-        console.log('Server responded to ping, connection alive');
-        return;
-      }
-      
-      // Handle system status messages
-      if (message.type === 'systemStatus') {
-        emitWsEvent('ws:system_status', message);
-      }
-    } catch (error) {
-      console.error("Error parsing WebSocket message:", error);
-    }
+    // Return a dummy WebSocket object that will queue messages until real connection
+    const dummySocket = {
+      readyState: WebSocket.CONNECTING,
+      send: (data: string) => {
+        console.log("Queuing message for when connection is established:", data);
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === 'subscribe') {
+            pendingSubscriptions.push(parsed);
+          }
+        } catch (err) {
+          console.error("Error parsing queued message:", err);
+        }
+      },
+      close: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+      onopen: null,
+      onclose: null,
+      onmessage: null,
+      onerror: null,
+      CONNECTING: WebSocket.CONNECTING,
+      OPEN: WebSocket.OPEN,
+      CLOSING: WebSocket.CLOSING,
+      CLOSED: WebSocket.CLOSED,
+      url: wsUrl,
+      bufferedAmount: 0,
+      extensions: "",
+      protocol: "",
+      binaryType: "blob" as BinaryType,
+    };
     
-    // Emit a general message received event for monitoring
-    emitWsEvent('ws:message_received');
-  };
-  
-  socket.onerror = (error) => {
-    console.error("WebSocket error:", error);
-    emitWsEvent('ws:error', { error });
-  };
-  
-  return socket;
+    return dummySocket as unknown as WebSocket;
+  }
 }
 
 export function subscribeToMarketUpdates(

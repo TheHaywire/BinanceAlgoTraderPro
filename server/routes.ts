@@ -714,21 +714,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
   
-  // Create WebSocket server
-  wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // Create WebSocket server with proper configuration
+  wss = new WebSocketServer({ 
+    server: httpServer, 
+    path: '/ws',
+    clientTracking: true,
+    perMessageDeflate: {
+      zlibDeflateOptions: {
+        chunkSize: 1024,
+        memLevel: 7,
+        level: 3
+      },
+      zlibInflateOptions: {
+        chunkSize: 10 * 1024
+      },
+      serverNoContextTakeover: true,
+      clientNoContextTakeover: true,
+      threshold: 1024 // only compress messages larger than this
+    }
+  });
+  
+  // WebSocket message handlers
+  wss.on('connection', function connection(ws: WebSocket & { isAlive?: boolean; lastActivity?: number; clientId?: string }) {
+    const clientId = Math.random().toString(36).substring(2, 10);
+    ws.isAlive = true;
+    ws.lastActivity = Date.now();
+    ws.clientId = clientId;
+    
+    console.log(`WebSocket client connected: ${clientId}`);
+    
+    // Add to our custom tracking
+    wsClients.add(ws);
+    
+    // Welcome message to client
+    try {
+      ws.send(JSON.stringify({
+        type: 'systemStatus',
+        status: 'connected',
+        message: 'Connected to AlgoTrader WebSocket server',
+        clientId,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error(`Error sending welcome message to client ${clientId}:`, error);
+    }
+    
+    // Handle incoming messages
+    ws.on('message', function incoming(message: string) {
+      try {
+        ws.lastActivity = Date.now();
+        
+        const data = JSON.parse(message.toString());
+        
+        // Handle ping messages specifically to maintain connection
+        if (data.type === 'ping') {
+          ws.send(JSON.stringify({
+            type: 'pong',
+            timestamp: Date.now()
+          }));
+          return;
+        }
+        
+        // Handle subscription requests
+        if (data.type === 'subscribe') {
+          console.log(`Client ${clientId} subscribed to ${data.channel}`);
+          // Additional subscription logic could be implemented here
+        }
+        
+        // Handle unsubscribe requests
+        if (data.type === 'unsubscribe') {
+          console.log(`Client ${clientId} unsubscribed from ${data.channel}`);
+          // Additional unsubscribe logic could be implemented here
+        }
+        
+        // Handle command requests
+        if (data.type === 'command') {
+          console.log(`Client ${clientId} sent command: ${data.command}`);
+          
+          // Command processing will be handled by specific endpoints
+          // for better security and validation
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+      }
+    });
+    
+    // Handle client disconnect
+    ws.on('close', function() {
+      console.log(`WebSocket client disconnected: ${clientId}`);
+      wsClients.delete(ws);
+    });
+    
+    // Handle errors
+    ws.on('error', function(error) {
+      console.error(`WebSocket error for client ${clientId}:`, error);
+      
+      // Try to close the connection gracefully
+      try {
+        ws.close();
+      } catch (e) {
+        console.error('Error closing WebSocket after error:', e);
+      }
+      
+      // Remove from our tracking
+      wsClients.delete(ws);
+    });
+  });
   
   // Real-time heartbeat mechanism for checking if clients are still connected
   const heartbeatInterval = setInterval(() => {
     if (wss && wss.clients) {
       console.log(`WebSocket heartbeat: ${wss.clients.size} clients tracked by WebSocketServer`);
       
-      wss.clients.forEach((client: WebSocket) => {
+      wss.clients.forEach((client: WebSocket & { isAlive?: boolean; lastActivity?: number; clientId?: string }) => {
         if (client.readyState === WebSocket.OPEN) {
           try {
             client.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
+            client.isAlive = true;
           } catch (error) {
             console.error('Error sending heartbeat:', error);
+            
+            // If we can't send a message, the connection might be dead
+            client.isAlive = false;
+            
+            // Try to close the connection gracefully
+            try {
+              client.close();
+            } catch (e) {
+              console.error('Error closing dead connection:', e);
+            }
+            
+            // Remove from our tracking
+            wsClients.delete(client);
           }
+        } else {
+          // Mark as not alive if not in OPEN state
+          client.isAlive = false;
         }
       });
       
@@ -763,9 +884,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Re-sync with server clients first to ensure we're in sync
     if (wss && wss.clients) {
       const activeServerClients = new Set<WebSocket>();
-      wss.clients.forEach((client: WebSocket) => {
+      wss.clients.forEach((client: WebSocket & { isAlive?: boolean; lastActivity?: number; clientId?: string }) => {
         if (client.readyState === WebSocket.OPEN) {
           activeServerClients.add(client);
+          
+          // Check for stale connections (no activity for more than 60 seconds)
+          if (client.lastActivity && now - client.lastActivity > 60000) {
+            console.log(`Ping sent to possibly stale client ${client.clientId}`);
+            try {
+              client.send(JSON.stringify({ 
+                type: 'ping', 
+                timestamp: now,
+                message: 'Connection check'
+              }));
+            } catch (error) {
+              console.error(`Error sending ping to stale client ${client.clientId}:`, error);
+              staleCount++;
+            }
+          }
         }
       });
       
