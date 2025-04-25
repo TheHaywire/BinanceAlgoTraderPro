@@ -8,6 +8,7 @@ import { TradingEngine } from "./trading/engine";
 import { RiskManager } from "./trading/risk";
 import { generateOpportunities } from "./trading/strategies";
 import { tradingCore } from "./trading/core";
+import { portfolioAnalyzer } from "./trading/portfolio";
 import WebSocket from "ws";
 
 const wsClients: Set<WebSocket> = new Set();
@@ -530,9 +531,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use risk manager to calculate real risk metrics
       const riskMetrics = riskManager.getRiskMetrics(positions);
       
+      // Add portfolio diversification score
+      riskMetrics.diversificationScore = portfolioAnalyzer.getPortfolioDiversificationScore();
+      
       res.json(riskMetrics);
     } catch (error) {
       console.error("Error calculating risk metrics:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Portfolio diversification and correlation analysis endpoints
+  app.get("/api/portfolio/correlation", async (req, res) => {
+    try {
+      const correlationMatrix = portfolioAnalyzer.getCorrelationMatrix();
+      res.json(correlationMatrix);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/portfolio/volatility", async (req, res) => {
+    try {
+      const volatilityData = portfolioAnalyzer.getVolatilityData();
+      res.json(volatilityData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/portfolio/recommendations", async (req, res) => {
+    try {
+      const recommendations = portfolioAnalyzer.getDiversificationRecommendations();
+      res.json(recommendations);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/portfolio/update", async (req, res) => {
+    try {
+      await portfolioAnalyzer.forceUpdate();
+      res.json({ success: true, message: "Portfolio analysis data updated" });
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

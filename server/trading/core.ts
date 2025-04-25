@@ -1025,6 +1025,13 @@ export class TradingCore extends EventEmitter {
   public isAutoTradingEnabled(): boolean {
     return this.autoTradingEnabled;
   }
+  
+  /**
+   * Get active symbols being monitored
+   */
+  public getActiveSymbols(): string[] {
+    return Array.from(this.activeSymbols);
+  }
 }
 
 // Export singleton instance
