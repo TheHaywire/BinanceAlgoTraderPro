@@ -7,6 +7,8 @@ import PerformanceMetrics from "@/components/dashboard/PerformanceMetrics";
 import RiskManagementBar from "@/components/dashboard/RiskManagementBar";
 import PortfolioDiversification from "@/components/dashboard/PortfolioDiversification";
 import LogViewer from "@/components/system/LogViewer";
+import TechnicalAnalysis from "@/components/dashboard/TechnicalAnalysis";
+import StrategyAnalyzer from "@/components/dashboard/StrategyAnalyzer";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -715,21 +717,35 @@ export default function DashboardEnhanced() {
               </TabsList>
               
               <TabsContent value="opportunities">
-                <TradingOpportunities 
-                  opportunities={filteredOpportunities} 
-                  isLoading={opportunitiesLoading} 
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <TradingOpportunities 
+                      opportunities={filteredOpportunities} 
+                      isLoading={opportunitiesLoading} 
+                    />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <TechnicalAnalysis className="h-full" />
+                  </div>
+                </div>
               </TabsContent>
               
               <TabsContent value="positions">
-                <ActivePositions 
-                  positions={filteredPositions} 
-                  marketData={marketData || []} 
-                  isLoading={positionsLoading} 
-                />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <ActivePositions 
+                      positions={filteredPositions} 
+                      marketData={marketData || []} 
+                      isLoading={positionsLoading} 
+                    />
+                  </div>
+                  <div className="lg:col-span-1">
+                    <StrategyAnalyzer className="h-full" />
+                  </div>
+                </div>
               </TabsContent>
               
-              <TabsContent value="performance" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <TabsContent value="performance" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <PerformanceMetrics 
                   performanceMetrics={performanceMetrics} 
                   isLoading={performanceLoading} 

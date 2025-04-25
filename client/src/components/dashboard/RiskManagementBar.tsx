@@ -7,7 +7,7 @@ interface RiskManagementBarProps {
 }
 
 export default function RiskManagementBar({ riskMetrics, isLoading }: RiskManagementBarProps) {
-  if (isLoading) {
+  if (isLoading || !riskMetrics) {
     return (
       <div className="mt-8 p-4 bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] animate-pulse">
         <div className="h-6 bg-gray-700 rounded w-1/4 mb-4"></div>
@@ -17,7 +17,9 @@ export default function RiskManagementBar({ riskMetrics, isLoading }: RiskManage
   }
   
   // Calculate risk status
-  const riskPercentage = (riskMetrics.totalRiskExposure / riskMetrics.maxRiskLimit) * 100;
+  const totalRiskExposure = riskMetrics.totalRiskExposure || 0;
+  const maxRiskLimit = riskMetrics.maxRiskLimit || 100;
+  const riskPercentage = (totalRiskExposure / maxRiskLimit) * 100;
   const riskStatus = 
     riskPercentage >= 80 ? "high" : 
     riskPercentage >= 50 ? "medium" : 
@@ -65,25 +67,25 @@ export default function RiskManagementBar({ riskMetrics, isLoading }: RiskManage
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
         <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
           <div className="text-sm text-neutral-400 mb-1">Total Risk Exposure</div>
-          <div className="font-bold text-lg">{riskMetrics.totalRiskExposure}%</div>
-          <div className="text-xs text-neutral-400">of maximum {riskMetrics.maxRiskLimit}%</div>
+          <div className="font-bold text-lg">{totalRiskExposure}%</div>
+          <div className="text-xs text-neutral-400">of maximum {maxRiskLimit}%</div>
         </div>
         
         <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
           <div className="text-sm text-neutral-400 mb-1">Active Positions</div>
           <div className="font-bold text-lg">{riskMetrics.activePositions || 0}</div>
-          <div className="text-xs text-neutral-400">of maximum {riskMetrics.maxPositions}</div>
+          <div className="text-xs text-neutral-400">of maximum {riskMetrics.maxPositions || 10}</div>
         </div>
         
         <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
           <div className="text-sm text-neutral-400 mb-1">Current Drawdown</div>
           <div className="font-bold text-lg">{riskMetrics.currentDrawdown || 0}%</div>
-          <div className="text-xs text-neutral-400">limit {riskMetrics.maxDrawdownLimit}%</div>
+          <div className="text-xs text-neutral-400">limit {riskMetrics.maxDrawdownLimit || 20}%</div>
         </div>
         
         <div className="bg-[rgba(10,15,28,0.3)] rounded-lg p-3">
           <div className="text-sm text-neutral-400 mb-1">Max Leverage</div>
-          <div className="font-bold text-lg">{riskMetrics.maxLeverage}x</div>
+          <div className="font-bold text-lg">{riskMetrics.maxLeverage || 5}x</div>
           <div className="text-xs text-neutral-400">dynamic adjustment active</div>
         </div>
       </div>
