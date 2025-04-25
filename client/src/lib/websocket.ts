@@ -1,17 +1,52 @@
 import { TradingOpportunity, Position, StrategyType, WSMessage } from "./types";
 
+// Custom events for WebSocket status
+const emitWsEvent = (eventName: string, detail = {}) => {
+  window.dispatchEvent(new CustomEvent(eventName, { detail }));
+};
+
 export function createWebSocketConnection(): WebSocket {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl = `${protocol}//${window.location.host}/ws`;
   
   const socket = new WebSocket(wsUrl);
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 5;
+  const reconnectDelay = 2000; // 2 seconds initial delay
   
   socket.onopen = () => {
     console.log("WebSocket connection established");
+    reconnectAttempts = 0;
+    emitWsEvent('ws:connected');
+  };
+  
+  socket.onclose = (event) => {
+    console.warn(`WebSocket closed: ${event.code} ${event.reason}`);
+    
+    // Auto-reconnect logic
+    if (reconnectAttempts < maxReconnectAttempts) {
+      reconnectAttempts++;
+      const delay = reconnectDelay * reconnectAttempts;
+      console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+      
+      emitWsEvent('ws:reconnecting', { attempt: reconnectAttempts, maxAttempts: maxReconnectAttempts });
+      
+      setTimeout(() => {
+        createWebSocketConnection();
+      }, delay);
+    } else {
+      emitWsEvent('ws:disconnected', { permanent: true });
+    }
+  };
+  
+  socket.onmessage = () => {
+    // Emit a general message received event for heartbeat monitoring
+    emitWsEvent('ws:message_received');
   };
   
   socket.onerror = (error) => {
     console.error("WebSocket error:", error);
+    emitWsEvent('ws:error', { error });
   };
   
   return socket;

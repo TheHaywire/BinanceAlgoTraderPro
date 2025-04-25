@@ -13,15 +13,72 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { StatusIndicator } from "@/components/ui/status-indicator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMarketData } from "@/hooks/useMarketData";
 import { usePositions } from "@/hooks/usePositions";
 import { useOpportunities } from "@/hooks/useOpportunities";
 import { usePerformanceMetrics, useRiskMetrics } from "@/hooks/usePerformance";
+import { useConnectionStatus } from "@/hooks/useConnectionStatus";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
 import { executeTradingOpportunity } from "@/lib/binanceApi";
 import { POPULAR_SYMBOLS, STRATEGY_NAMES } from "@/lib/constants";
+
+// Connection status badge component
+const ConnectionStatusBadge = () => {
+  const { status, lastUpdateTime } = useConnectionStatus();
+  
+  const getStatusMessage = () => {
+    switch (status) {
+      case "healthy":
+        return "Real-time data connection active";
+      case "warning":
+        return "Data connection delayed, some prices may be stale";
+      case "error":
+        return "Connection lost, prices may be outdated";
+      case "connecting":
+        return "Establishing data connection...";
+      default:
+        return "Unknown connection status";
+    }
+  };
+  
+  const getTimeSinceUpdate = () => {
+    const now = Date.now();
+    const seconds = Math.floor((now - lastUpdateTime) / 1000);
+    
+    if (seconds < 60) {
+      return `${seconds}s ago`;
+    } else if (seconds < 3600) {
+      return `${Math.floor(seconds / 60)}m ago`;
+    } else {
+      return `${Math.floor(seconds / 3600)}h ago`;
+    }
+  };
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="inline-flex items-center px-3 py-1 rounded-full bg-[rgba(16,22,34,0.4)] border border-[rgba(73,86,118,0.2)]">
+            <StatusIndicator status={status} size="sm" className="mr-2" />
+            <span className="text-xs font-medium">
+              {status === "healthy" ? "Live" : status === "warning" ? "Delayed" : status === "error" ? "Disconnected" : "Connecting"}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-sm">
+            <p className="font-medium">{getStatusMessage()}</p>
+            <p className="text-xs text-neutral-light mt-1">Last update: {getTimeSinceUpdate()}</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
 export default function Dashboard() {
   const [timeRange, setTimeRange] = useState("24h");
@@ -141,7 +198,10 @@ export default function Dashboard() {
       <div className="mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Algorithmic Trading System</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">Algorithmic Trading System</h1>
+              <ConnectionStatusBadge />
+            </div>
             <p className="text-neutral-light">AI-Powered Automated Trading & Strategy Execution</p>
           </div>
           
