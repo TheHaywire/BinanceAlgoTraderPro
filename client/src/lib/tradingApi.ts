@@ -7,7 +7,8 @@ const API_BASE = "/api/trading";
  * Fetches all strategies 
  */
 export async function getStrategies(): Promise<Strategy[]> {
-  const response = await apiRequest("GET", `${API_BASE}/strategies`);
+  const endpoint = `${API_BASE}/strategies`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -15,7 +16,8 @@ export async function getStrategies(): Promise<Strategy[]> {
  * Fetches a specific strategy by ID
  */
 export async function getStrategy(id: number): Promise<Strategy> {
-  const response = await apiRequest("GET", `${API_BASE}/strategies/${id}`);
+  const endpoint = `${API_BASE}/strategies/${id}`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -28,7 +30,8 @@ export async function createStrategy(strategy: {
   params: any;
   isActive: boolean;
 }): Promise<Strategy> {
-  const response = await apiRequest("POST", `${API_BASE}/strategies`, strategy);
+  const endpoint = `${API_BASE}/strategies`;
+  const response = await apiRequest(endpoint, "POST", strategy);
   return response.json();
 }
 
@@ -44,7 +47,8 @@ export async function updateStrategy(
     isActive: boolean;
   }>
 ): Promise<Strategy> {
-  const response = await apiRequest("PATCH", `${API_BASE}/strategies/${id}`, strategyUpdate);
+  const endpoint = `${API_BASE}/strategies/${id}`;
+  const response = await apiRequest(endpoint, "PATCH", strategyUpdate);
   return response.json();
 }
 
@@ -59,7 +63,8 @@ export async function testStrategy(
     limit?: number;
   }
 ): Promise<any> {
-  const response = await apiRequest("POST", `${API_BASE}/strategies/${id}/test`, params);
+  const endpoint = `${API_BASE}/strategies/${id}/test`;
+  const response = await apiRequest(endpoint, "POST", params);
   return response.json();
 }
 
@@ -67,7 +72,8 @@ export async function testStrategy(
  * Gets performance metrics
  */
 export async function getDbPerformanceMetrics(): Promise<PerformanceMetrics> {
-  const response = await apiRequest("GET", `${API_BASE}/performance`);
+  const endpoint = `${API_BASE}/performance`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -75,6 +81,7 @@ export async function getDbPerformanceMetrics(): Promise<PerformanceMetrics> {
  * Creates or updates performance metrics
  */
 export async function updatePerformanceMetrics(metrics: Partial<PerformanceMetrics>): Promise<PerformanceMetrics> {
-  const response = await apiRequest("POST", `${API_BASE}/performance`, metrics);
+  const endpoint = `${API_BASE}/performance`;
+  const response = await apiRequest(endpoint, "POST", metrics);
   return response.json();
 }
