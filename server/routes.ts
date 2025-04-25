@@ -16,6 +16,9 @@ const binanceWs = new BinanceWebSocketClient(true); // Use testnet
 const tradingEngine = new TradingEngine();
 const riskManager = new RiskManager();
 
+// Store subscription info for reconnections
+let pendingSubscriptions: { type: string; channel: string; symbols?: string[] }[] = [];
+
 // Mock data for positions, performance, etc.
 let mockPositions: any[] = [];
 let mockOpportunities: any[] = [];
@@ -699,19 +702,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const heartbeatInterval = setInterval(() => {
     wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
+        try {
+          client.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
+        } catch (error) {
+          console.error('Error sending heartbeat:', error);
+        }
       }
     });
   }, 30000); // Send heartbeat every 30 seconds
   
+  // Check for dead/stale connections and remove them
+  const connectionMonitorInterval = setInterval(() => {
+    const now = Date.now();
+    let activeCount = 0;
+    let staleCount = 0;
+    
+    wsClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        activeCount++;
+        // Ping clients that haven't sent a message in a while
+        if ((client as any).lastActivity && (now - (client as any).lastActivity > 60000)) {
+          try {
+            // Try to ping the client
+            client.ping();
+            console.log('Ping sent to possibly stale client');
+          } catch (error) {
+            console.error('Error pinging client:', error);
+          }
+        }
+      } else {
+        // Client is no longer connected, remove it
+        staleCount++;
+        wsClients.delete(client);
+      }
+    });
+    
+    if (wsClients.size === 0) {
+      console.log("No active WebSocket clients");
+    } else {
+      console.log(`WebSocket connections - Active: ${activeCount}, Removed stale: ${staleCount}, Total: ${wsClients.size}`);
+    }
+  }, 60000); // Check every minute
+  
   // Clean up on server shutdown
   process.on('SIGINT', () => {
     clearInterval(heartbeatInterval);
+    clearInterval(connectionMonitorInterval);
     wss.close();
     process.exit(0);
   });
   
   wss.on('connection', (ws) => {
+    // Store last activity time to detect zombie connections
+    (ws as any).lastActivity = Date.now();
+    
+    // Add connection pong handler to track client activity
+    ws.on('pong', () => {
+      (ws as any).lastActivity = Date.now();
+      (ws as any).isAlive = true;
+    });
+    
+    // Mark the connection as alive initially
+    (ws as any).isAlive = true;
+    
+    // Add client to active clients pool
     wsClients.add(ws);
     console.log(`WebSocket client connected. Total clients: ${wsClients.size}`);
     
@@ -721,80 +775,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
       binanceApi.getPositions()
     ])
     .then(([marketData, positions]) => {
-      // Send the latest market data
-      ws.send(JSON.stringify({
-        type: 'marketUpdate',
-        data: marketData,
-        timestamp: Date.now()
-      }));
-      
-      // Also send position data
-      ws.send(JSON.stringify({
-        type: 'positionUpdate',
-        data: positions,
-        timestamp: Date.now()
-      }));
-      
-      // Also send trading core status
-      ws.send(JSON.stringify({
-        type: 'tradingStatus',
-        data: {
-          opportunities: tradingCore.getOpportunities(),
-          positions: tradingCore.getPositions(),
-          autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
-          lastScanTime: tradingCore.getLastScanTime(),
-          regimes: tradingCore.getRegimes()
-        },
-        timestamp: Date.now()
-      }));
+      // Only send if client is still connected
+      if (ws.readyState === WebSocket.OPEN) {
+        // Send the latest market data
+        ws.send(JSON.stringify({
+          type: 'marketUpdate',
+          data: marketData,
+          timestamp: Date.now()
+        }));
+        
+        // Also send position data
+        ws.send(JSON.stringify({
+          type: 'positionUpdate',
+          data: positions,
+          timestamp: Date.now()
+        }));
+        
+        // Also send trading core status
+        ws.send(JSON.stringify({
+          type: 'tradingStatus',
+          data: {
+            opportunities: tradingCore.getOpportunities(),
+            positions: tradingCore.getPositions(),
+            autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
+            lastScanTime: tradingCore.getLastScanTime(),
+            regimes: tradingCore.getRegimes()
+          },
+          timestamp: Date.now()
+        }));
+      }
     })
     .catch(error => {
       console.error('Error sending initial data to client:', error);
       
-      // Try to send partial data if available
-      try {
-        ws.send(JSON.stringify({
-          type: 'systemStatus',
-          status: 'warning',
-          message: 'Some data feeds unavailable. Prices may be delayed.',
-          timestamp: Date.now()
-        }));
-      } catch (sendError) {
-        console.error('Failed to send error notification to client:', sendError);
+      // Try to send partial data if client is still connected
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({
+            type: 'systemStatus',
+            status: 'warning',
+            message: 'Some data feeds unavailable. Prices may be delayed.',
+            timestamp: Date.now()
+          }));
+        } catch (sendError) {
+          console.error('Failed to send error notification to client:', sendError);
+        }
       }
     });
     
     ws.on('message', (message) => {
       try {
+        // Update activity timestamp on any message
+        (ws as any).lastActivity = Date.now();
+        
         const data = JSON.parse(message.toString());
+        
+        // Handle ping requests with immediate pong response
+        if (data.type === 'ping') {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'pong',
+              timestamp: Date.now(),
+              echo: data.timestamp
+            }));
+          }
+          return;
+        }
         
         // Handle subscription requests
         if (data.type === 'subscribe') {
           if (data.channel === 'market') {
             // Market data subscription already handled
             console.log('Client subscribed to market data');
+            
+            // Immediately send latest market data
+            if (ws.readyState === WebSocket.OPEN) {
+              binanceApi.getMarketData()
+                .then(marketData => {
+                  ws.send(JSON.stringify({
+                    type: 'marketUpdate',
+                    data: marketData,
+                    timestamp: Date.now()
+                  }));
+                })
+                .catch(error => {
+                  console.error('Error sending market data on subscription:', error);
+                });
+            }
           } else if (data.channel === 'position') {
             // Send current positions
-            ws.send(JSON.stringify({
-              type: 'positionUpdate',
-              data: tradingCore.getPositions() 
-            }));
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'positionUpdate',
+                data: tradingCore.getPositions(),
+                timestamp: Date.now() 
+              }));
+            }
           } else if (data.channel === 'opportunity') {
             // Send current opportunities
-            ws.send(JSON.stringify({
-              type: 'opportunityUpdate',
-              data: tradingCore.getOpportunities()
-            }));
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'opportunityUpdate',
+                data: tradingCore.getOpportunities(),
+                timestamp: Date.now()
+              }));
+            }
           } else if (data.channel === 'trading') {
             // Send trading system status
-            ws.send(JSON.stringify({
-              type: 'tradingStatus',
-              data: {
-                autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
-                lastScanTime: tradingCore.getLastScanTime()
-              }
-            }));
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({
+                type: 'tradingStatus',
+                data: {
+                  autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
+                  lastScanTime: tradingCore.getLastScanTime()
+                },
+                timestamp: Date.now()
+              }));
+            }
           }
+          
+          // Store this subscription for reconnection support
+          if (!pendingSubscriptions) {
+            pendingSubscriptions = [];
+          }
+          pendingSubscriptions.push({
+            type: 'subscribe',
+            channel: data.channel,
+            symbols: data.symbols
+          });
         }
         // Handle trading commands
         else if (data.type === 'command') {
