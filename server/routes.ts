@@ -10,7 +10,7 @@ import { generateOpportunities } from "./trading/strategies";
 import { tradingCore } from "./trading/core";
 import { portfolioAnalyzer } from "./trading/portfolio";
 import WebSocket from "ws";
-import { setupLogRoutes, addSystemLog } from "./routes/logs";
+import { setupLogRoutes, addSystemLog, getLogs } from "./routes/logs";
 
 const wsClients: Set<WebSocket> = new Set();
 const binanceWs = new BinanceWebSocketClient(true); // Use testnet
@@ -185,15 +185,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up a WebSocket message handler for system logs
   setInterval(() => {
     // Periodically broadcast any new log entries
-    const { getLogs } = require('./routes/logs');
-    const logs = getLogs();
-    if (logs && logs.length > 0) {
-      const latestLog = logs[0]; // Logs are in reverse chronological order
-      
-      if (latestLog && latestLog.timestamp > Date.now() - 1000) {
-        // Only broadcast logs that are less than 1 second old
-        broadcastSystemLog(latestLog);
+    try {
+      const logs = getLogs();
+      if (logs && logs.length > 0) {
+        const latestLog = logs[0]; // Logs are in reverse chronological order
+        
+        if (latestLog && latestLog.timestamp > Date.now() - 1000) {
+          // Only broadcast logs that are less than 1 second old
+          broadcastSystemLog(latestLog);
+        }
       }
+    } catch (error) {
+      console.error('Error broadcasting logs:', error);
     }
   }, 500); // Check every 500ms for new logs
   
