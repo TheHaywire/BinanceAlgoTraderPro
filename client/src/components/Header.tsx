@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { getAccountInfo } from "@/lib/binanceApi";
 import { useQuery } from "@tanstack/react-query";
+import { StatusIndicator } from "@/components/ui/status-indicator";
 
 export default function Header() {
   const [location] = useLocation();
@@ -62,6 +63,10 @@ export default function Header() {
             </div>
           </div>
           
+          <div className="hidden md:flex items-center p-1.5 rounded-md bg-[#252D3D] mr-1">
+            <StatusIndicator showLabel={false} size="sm" className="mx-1" />
+          </div>
+
           <div className="relative">
             <button className="p-1.5 rounded-md hover:bg-[#252D3D]">
               <i className="ri-notification-3-line text-xl"></i>

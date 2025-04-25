@@ -32,15 +32,31 @@ export default function MetricCard({
   const [isAnimating, setIsAnimating] = useState(false);
   const [prevValue, setPrevValue] = useState<string | number | null>(null);
   
-  // Animation effect when value changes
+  // Enhanced animation effect when value changes
   useEffect(() => {
     if (prevValue !== null && prevValue !== value) {
+      // Start animation
       setIsAnimating(true);
-      const timer = setTimeout(() => setIsAnimating(false), 500);
+      
+      // Reset animation after 800ms for a more noticeable effect
+      const timer = setTimeout(() => setIsAnimating(false), 800);
+      
+      // Add visual feedback for live updates
+      if (isLive) {
+        // Flash the value for a nice visual effect
+        const flashElement = document.getElementById(`metric-value-${title.replace(/\s+/g, '-').toLowerCase()}`);
+        if (flashElement) {
+          flashElement.classList.add('flash-update');
+          setTimeout(() => {
+            flashElement.classList.remove('flash-update');
+          }, 1000);
+        }
+      }
+      
       return () => clearTimeout(timer);
     }
     setPrevValue(value);
-  }, [value, prevValue]);
+  }, [value, prevValue, isLive, title]);
   
   // Progressive formatting for large numbers
   const formattedValue = typeof value === 'number' && value > 1000 
@@ -64,8 +80,9 @@ export default function MetricCard({
           <div className="flex items-center">
             <div className="font-medium text-sm">{title}</div>
             {isLive && (
-              <div className="ml-2 w-1.5 h-1.5 rounded-full bg-accent animate-pulse" 
-                   title="Real-time data">
+              <div className="ml-2 flex items-center" title="Real-time data">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse mr-1"></div>
+                <span className="text-xs text-accent/80">LIVE</span>
               </div>
             )}
           </div>
