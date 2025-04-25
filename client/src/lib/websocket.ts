@@ -33,10 +33,10 @@ export function createWebSocketConnection(): WebSocket {
     reconnectTimeout = null;
   }
   
-  // Construct a stable WebSocket URL
+  // Construct a stable WebSocket URL with proper path handling for Replit
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.host;
-  // Use a cleaner path that works with Replit's proxying
+  // Ensure the path is correctly formatted for the Replit environment
   const wsUrl = `${protocol}//${host}/ws`;
   
   console.log(`Creating WebSocket connection to ${wsUrl}`);
@@ -280,9 +280,20 @@ export function createWebSocketConnection(): WebSocket {
       
       // Close the connection on error to trigger the reconnect logic
       try {
-        socket.close(1006, "Connection error, triggering reconnect");
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close(1006, "Connection error, triggering reconnect");
+        }
       } catch (err) {
         console.error("Error closing socket after error:", err);
+        // Force reset the connection state
+        wsInstance = null;
+        // Schedule a reconnection
+        if (!reconnectTimeout) {
+          reconnectTimeout = window.setTimeout(() => {
+            reconnectTimeout = null;
+            createWebSocketConnection();
+          }, 2000);
+        }
       }
     };
     

@@ -729,26 +729,20 @@ export class TradingCore extends EventEmitter {
       // Calculate position size
       const positionSize = this.calculatePositionSize(opportunity);
       
-      // Round position size to the correct precision for this asset
-      const roundedQuantity = this.roundToAssetPrecision(opportunity.symbol, positionSize);
+      // Round position size to the correct precision for this asset using our improved function
+      const finalQuantity = this.roundToAssetPrecision(opportunity.symbol, positionSize);
       
-      console.log(`Executing opportunity for ${opportunity.symbol}: calculated size ${positionSize}, rounded to ${roundedQuantity}`);
+      console.log(`Executing opportunity for ${opportunity.symbol}: calculated size ${positionSize}, rounded to ${finalQuantity}`);
       
-      // For certain assets, use fixed quantities that work reliably with Binance API
-      let finalQuantity = roundedQuantity;
-      
-      // Use predefined minimum quantities for common symbols to avoid precision errors
-      const minimumQuantities: Record<string, number> = {
-        'BTCUSDT': 0.001, // BTC has a minimum quantity of 0.001
-        'XRPUSDT': 10,    // Use 10 XRP as minimum (whole number)
-        'ETHUSDT': 0.01,  // ETH has a minimum quantity of 0.01
-        'SOLUSDT': 0.1    // SOL has a minimum quantity of 0.1
-      };
-      
-      if (minimumQuantities[opportunity.symbol]) {
-        finalQuantity = minimumQuantities[opportunity.symbol];
-        console.log(`Using fixed quantity ${finalQuantity} for ${opportunity.symbol}`);
-      }
+      // Log detailed information about the order for debugging
+      console.log(`Order details:
+        Symbol: ${opportunity.symbol}
+        Direction: ${opportunity.direction}
+        Quantity: ${finalQuantity}
+        Entry Price: ${opportunity.entryPrice}
+        Target Price: ${opportunity.targetPrice}
+        Stop Loss: ${opportunity.stopLoss}
+      `);
       
       // Set appropriate leverage before placing order
       const leverage = 5; // Use a conservative leverage of 5x
@@ -851,18 +845,25 @@ export class TradingCore extends EventEmitter {
     // Get market data for this symbol
     const marketData = this.marketData.get(symbol);
     
-    // Symbol-specific precision chart (https://www.binance.com/en/futures/trading-rules/perpetual/leverage-margin)
+    // Updated Symbol-specific precision chart for Binance Futures
+    // These values are strictly defined by Binance for each asset
     const precisionMap: Record<string, number> = {
-      'BTCUSDT': 3,
-      'ETHUSDT': 3,
-      'BNBUSDT': 2,
-      'SOLUSDT': 1,
-      'ADAUSDT': 0,
-      'DOGEUSDT': 0,
-      'XRPUSDT': 1,  // XRP has 1 decimal precision on Binance futures
-      'DOTUSDT': 1,
-      'LINKUSDT': 1,
-      'AVAXUSDT': 1
+      'BTCUSDT': 3,  // BTC precision: 0.001
+      'ETHUSDT': 3,  // ETH precision: 0.001
+      'BNBUSDT': 2,  // BNB precision: 0.01
+      'SOLUSDT': 1,  // SOL precision: 0.1
+      'ADAUSDT': 0,  // ADA precision: 1
+      'DOGEUSDT': 0, // DOGE precision: 1
+      'XRPUSDT': 0,  // XRP precision: 1 (updated from incorrect value)
+      'DOTUSDT': 1,  // DOT precision: 0.1
+      'LINKUSDT': 1, // LINK precision: 0.1
+      'AVAXUSDT': 1, // AVAX precision: 0.1
+      'MATICUSDT': 0, // MATIC precision: 1
+      'NEARUSDT': 0,  // NEAR precision: 1
+      'ATOMUSDT': 1,  // ATOM precision: 0.1
+      'LTCUSDT': 2,   // LTC precision: 0.01
+      'SANDUSDT': 0,  // SAND precision: 1
+      'UNIUSDT': 0    // UNI precision: 1
     };
     
     // Use the precision map or default to 0 (whole numbers) for other symbols
@@ -870,18 +871,46 @@ export class TradingCore extends EventEmitter {
     
     console.log(`Rounding ${symbol} amount ${amount} to precision ${precision}`);
     
-    const rounded = parseFloat(amount.toFixed(precision));
+    // Round down to ensure we don't exceed the maximum precision
+    const factor = Math.pow(10, precision);
+    const rounded = Math.floor(amount * factor) / factor;
     
     // Ensure minimum notional value requirements are met
     const price = parseFloat(marketData?.lastPrice || '0');
-    if (price > 0 && rounded * price < 5) {
-      // If value is less than $5 equivalent, adjust to meet minimum requirements
-      console.log(`Adjusting quantity for ${symbol} to meet minimum notional value`);
-      const adjustedQty = 5 / price;
-      return parseFloat(adjustedQty.toFixed(precision));
+    const minNotional = 5.0; // Binance requires at least $5 equivalent
+    
+    if (price > 0 && rounded * price < minNotional) {
+      // If value is less than minimum notional, adjust to meet requirements
+      console.log(`Adjusting quantity for ${symbol} to meet minimum notional value of $${minNotional}`);
+      const minQty = Math.ceil((minNotional / price) * factor) / factor;
+      
+      // Check for symbol-specific minimum quantities
+      const symbolMinQty = this.getSymbolMinimumQuantity(symbol);
+      return Math.max(minQty, symbolMinQty);
     }
     
-    return rounded;
+    // Also check for symbol-specific minimum quantities
+    const symbolMinQty = this.getSymbolMinimumQuantity(symbol);
+    return Math.max(rounded, symbolMinQty);
+  }
+  
+  private getSymbolMinimumQuantity(symbol: string): number {
+    // Binance-defined minimum quantities for futures trading
+    const minimumQuantities: Record<string, number> = {
+      'BTCUSDT': 0.001,
+      'ETHUSDT': 0.001,
+      'BNBUSDT': 0.01,
+      'SOLUSDT': 0.1,
+      'XRPUSDT': 1,
+      'ADAUSDT': 1,
+      'DOGEUSDT': 1,
+      'SANDUSDT': 1,
+      'MATICUSDT': 1,
+      'AVAXUSDT': 0.1,
+      'NEARUSDT': 1
+    };
+    
+    return minimumQuantities[symbol] || 0.1; // Default to 0.1 as a safe value
   }
   
   private async saveExecutedTrade(opportunity: TradingOpportunity, orderResult: any) {
