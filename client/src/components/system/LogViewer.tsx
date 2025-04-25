@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, RefreshCw, X, AlertCircle, AlertTriangle, Info, Download } from 'lucide-react';
-import ws from '@/lib/websocket';
+import * as ws from '@/lib/websocket';
 
 interface LogEntry {
   id: string;

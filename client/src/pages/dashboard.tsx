@@ -6,6 +6,7 @@ import TradingOpportunities from "@/components/dashboard/TradingOpportunities";
 import PerformanceMetrics from "@/components/dashboard/PerformanceMetrics";
 import RiskManagementBar from "@/components/dashboard/RiskManagementBar";
 import PortfolioDiversification from "@/components/dashboard/PortfolioDiversification";
+import LogViewer from "@/components/system/LogViewer";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -640,96 +641,92 @@ export default function Dashboard() {
           
           {/* System Logs Tab */}
           <TabsContent value="system-logs" className="space-y-6">
-            <div className="card-dashboard p-4">
-              <h3 className="text-lg font-bold mb-4">System Logs & Monitoring</h3>
-              <div className="bg-[rgba(10,13,23,0.5)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4 font-mono text-sm h-[400px] overflow-y-auto">
-                <div className="text-neutral-light/70">[{new Date().toISOString()}] System initialized - Auto-trading {autoTradingEnabled ? 'enabled' : 'disabled'}</div>
-                <div className="text-[#00C897]">[{new Date(Date.now() - 120000).toISOString()}] Market scan complete - Found {opportunities.length} opportunities</div>
-                <div className="text-primary">[{new Date(Date.now() - 240000).toISOString()}] Strategy optimization completed - Adjusted parameters for Volatility Expansion strategy</div>
-                <div className="text-[#FFB800]">[{new Date(Date.now() - 360000).toISOString()}] Risk warning - Current drawdown approaching limit (12.3% / 15%)</div>
-                <div className="text-[#FF3B69]">[{new Date(Date.now() - 480000).toISOString()}] API rate limit warning - Reduced scan frequency to {scanInterval}min</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
+                <h4 className="text-sm font-medium mb-3">System Status</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Trading Engine:</span>
+                    <span className="text-xs text-[#00C897] flex items-center">
+                      <i className="ri-checkbox-circle-line mr-1"></i>
+                      Running
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">API Connection:</span>
+                    <span className="text-xs text-[#00C897] flex items-center">
+                      <i className="ri-checkbox-circle-line mr-1"></i>
+                      Connected
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">WebSocket Feed:</span>
+                    <span className="text-xs text-[#00C897] flex items-center">
+                      <i className="ri-checkbox-circle-line mr-1"></i>
+                      Active
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Database:</span>
+                    <span className="text-xs text-[#00C897] flex items-center">
+                      <i className="ri-checkbox-circle-line mr-1"></i>
+                      Connected
+                    </span>
+                  </div>
+                </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
-                  <h4 className="text-sm font-medium mb-3">System Status</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Trading Engine:</span>
-                      <span className="text-xs text-[#00C897] flex items-center">
-                        <i className="ri-checkbox-circle-line mr-1"></i>
-                        Running
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">API Connection:</span>
-                      <span className="text-xs text-[#00C897] flex items-center">
-                        <i className="ri-checkbox-circle-line mr-1"></i>
-                        Connected
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">WebSocket Feed:</span>
-                      <span className="text-xs text-[#00C897] flex items-center">
-                        <i className="ri-checkbox-circle-line mr-1"></i>
-                        Active
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Database:</span>
-                      <span className="text-xs text-[#00C897] flex items-center">
-                        <i className="ri-checkbox-circle-line mr-1"></i>
-                        Connected
-                      </span>
-                    </div>
+              <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
+                <h4 className="text-sm font-medium mb-3">Performance Monitoring</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">CPU Usage:</span>
+                    <span className="text-xs">42%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Memory Usage:</span>
+                    <span className="text-xs">1.2GB / 2GB</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">API Rate Limit:</span>
+                    <span className="text-xs text-[#FFB800] flex items-center">
+                      <i className="ri-alert-line mr-1"></i>
+                      76%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Scan Latency:</span>
+                    <span className="text-xs">214ms</span>
                   </div>
                 </div>
-                
-                <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
-                  <h4 className="text-sm font-medium mb-3">Performance Monitoring</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">CPU Usage:</span>
-                      <span className="text-xs">42%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Memory Usage:</span>
-                      <span className="text-xs">1.2GB / 2GB</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">API Rate Limit:</span>
-                      <span className="text-xs">76%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Scan Latency:</span>
-                      <span className="text-xs">214ms</span>
-                    </div>
+              </div>
+              
+              <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
+                <h4 className="text-sm font-medium mb-3">Activity Summary</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Last Scan:</span>
+                    <span className="text-xs">{formatTimestamp(lastScanTime)}</span>
                   </div>
-                </div>
-                
-                <div className="bg-[rgba(16,22,34,0.6)] rounded-xl border border-[rgba(73,86,118,0.15)] p-4">
-                  <h4 className="text-sm font-medium mb-3">Schedule</h4>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Last System Update:</span>
-                      <span className="text-xs">{new Date().toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Next Market Scan:</span>
-                      <span className="text-xs">{new Date(lastScanTime.getTime() + scanInterval * 60 * 1000).toLocaleTimeString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Next Strategy Optimization:</span>
-                      <span className="text-xs">In 3 hours</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-neutral-light">Database Backup:</span>
-                      <span className="text-xs">In 6 hours</span>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Trades Today:</span>
+                    <span className="text-xs">{performanceMetrics.totalTrades || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Next Scan:</span>
+                    <span className="text-xs">{new Date(lastScanTime.getTime() + scanInterval * 60 * 1000).toLocaleTimeString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-neutral-light">Auto-Trading:</span>
+                    <span className="text-xs text-[autoTradingEnabled ? '#00C897' : '#FF3B69']">
+                      {autoTradingEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
+            
+            <LogViewer className="card-dashboard" maxEntries={1000} />
           </TabsContent>
         </Tabs>
       </div>
