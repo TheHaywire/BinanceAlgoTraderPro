@@ -7,7 +7,8 @@ const API_BASE = "/api/binance";
  * Fetches market data for all symbols or a specific symbol
  */
 export async function getMarketData(symbol?: string): Promise<MarketData[]> {
-  const response = await apiRequest("GET", `${API_BASE}/market${symbol ? `?symbol=${symbol}` : ""}`);
+  const endpoint = `${API_BASE}/market${symbol ? `?symbol=${symbol}` : ""}`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -15,10 +16,8 @@ export async function getMarketData(symbol?: string): Promise<MarketData[]> {
  * Fetches candles for a specific symbol and timeframe
  */
 export async function getCandles(symbol: string, timeframe: string, limit: number = 100): Promise<Candle[]> {
-  const response = await apiRequest(
-    "GET", 
-    `${API_BASE}/candles?symbol=${symbol}&timeframe=${timeframe}&limit=${limit}`
-  );
+  const endpoint = `${API_BASE}/candles?symbol=${symbol}&timeframe=${timeframe}&limit=${limit}`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -26,7 +25,8 @@ export async function getCandles(symbol: string, timeframe: string, limit: numbe
  * Fetches current user positions
  */
 export async function getPositions(): Promise<Position[]> {
-  const response = await apiRequest("GET", `${API_BASE}/positions`);
+  const endpoint = `${API_BASE}/positions`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -34,7 +34,8 @@ export async function getPositions(): Promise<Position[]> {
  * Creates a new order
  */
 export async function createOrder(order: ExecutionOrder): Promise<any> {
-  const response = await apiRequest("POST", `${API_BASE}/order`, order);
+  const endpoint = `${API_BASE}/order`;
+  const response = await apiRequest(endpoint, "POST", order);
   return response.json();
 }
 
@@ -42,10 +43,8 @@ export async function createOrder(order: ExecutionOrder): Promise<any> {
  * Cancels an order by id
  */
 export async function cancelOrder(symbol: string, orderId: string): Promise<any> {
-  const response = await apiRequest(
-    "DELETE", 
-    `${API_BASE}/order?symbol=${symbol}&orderId=${orderId}`
-  );
+  const endpoint = `${API_BASE}/order?symbol=${symbol}&orderId=${orderId}`;
+  const response = await apiRequest(endpoint, "DELETE");
   return response.json();
 }
 
@@ -53,7 +52,8 @@ export async function cancelOrder(symbol: string, orderId: string): Promise<any>
  * Sets leverage for a symbol
  */
 export async function setLeverage(symbol: string, leverage: number): Promise<any> {
-  const response = await apiRequest("POST", `${API_BASE}/leverage`, { symbol, leverage });
+  const endpoint = `${API_BASE}/leverage`;
+  const response = await apiRequest(endpoint, "POST", { symbol, leverage });
   return response.json();
 }
 
@@ -61,7 +61,8 @@ export async function setLeverage(symbol: string, leverage: number): Promise<any
  * Gets account information including balance
  */
 export async function getAccountInfo(): Promise<any> {
-  const response = await apiRequest("GET", `${API_BASE}/account`);
+  const endpoint = `${API_BASE}/account`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -69,7 +70,8 @@ export async function getAccountInfo(): Promise<any> {
  * Gets active trading opportunities
  */
 export async function getTradingOpportunities(): Promise<any> {
-  const response = await apiRequest("GET", `${API_BASE}/opportunities`);
+  const endpoint = `${API_BASE}/opportunities`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -77,7 +79,8 @@ export async function getTradingOpportunities(): Promise<any> {
  * Gets performance metrics
  */
 export async function getPerformanceMetrics(): Promise<any> {
-  const response = await apiRequest("GET", `${API_BASE}/performance`);
+  const endpoint = `${API_BASE}/performance`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -85,7 +88,8 @@ export async function getPerformanceMetrics(): Promise<any> {
  * Gets risk metrics
  */
 export async function getRiskMetrics(): Promise<any> {
-  const response = await apiRequest("GET", `${API_BASE}/risk`);
+  const endpoint = `${API_BASE}/risk`;
+  const response = await apiRequest(endpoint, "GET");
   return response.json();
 }
 
@@ -93,7 +97,10 @@ export async function getRiskMetrics(): Promise<any> {
  * Execute a trading opportunity
  */
 export async function executeTradingOpportunity(opportunityId: string): Promise<any> {
-  const response = await apiRequest("POST", `${API_BASE}/execute`, { opportunityId });
+  // Fix the API endpoint URL format to ensure it's properly sent to the server
+  const endpoint = `${API_BASE}/execute`;
+  console.log(`Executing opportunity: ${opportunityId} via ${endpoint}`);
+  const response = await apiRequest(endpoint, "POST", { opportunityId });
   return response.json();
 }
 
@@ -101,7 +108,8 @@ export async function executeTradingOpportunity(opportunityId: string): Promise<
  * Close a position
  */
 export async function closePosition(symbol: string, positionSide: 'LONG' | 'SHORT' | 'BOTH'): Promise<any> {
-  const response = await apiRequest("POST", `${API_BASE}/close-position`, { symbol, positionSide });
+  const endpoint = `${API_BASE}/close-position`;
+  const response = await apiRequest(endpoint, "POST", { symbol, positionSide });
   return response.json();
 }
 
@@ -114,7 +122,8 @@ export async function setTPSL(
   stopPrice?: string,
   profitPrice?: string
 ): Promise<any> {
-  const response = await apiRequest("POST", `${API_BASE}/tpsl`, { 
+  const endpoint = `${API_BASE}/tpsl`;
+  const response = await apiRequest(endpoint, "POST", { 
     symbol, 
     positionSide,
     stopPrice,
