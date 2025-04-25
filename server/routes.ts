@@ -1095,6 +1095,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 timestamp: Date.now()
               }));
             }
+          } else if (data.channel === 'system_logs') {
+            // Send system logs
+            if (ws.readyState === WebSocket.OPEN) {
+              const logs = getLogs();
+              
+              ws.send(JSON.stringify({
+                type: 'system_logs',
+                data: logs,
+                timestamp: Date.now()
+              }));
+              
+              // Also log this subscription
+              addSystemLog('info', `Client ${clientId} subscribed to system logs`, 'websocket');
+            }
           }
           
           // Store this subscription for reconnection support
