@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiRequest } from "@/lib/queryClient";
 import { Badge } from "@/components/ui/badge";
 import {
   ChevronUpIcon,
@@ -28,38 +26,24 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { usePortfolioDiversification } from "@/hooks/usePortfolioDiversification";
 
 const PortfolioDiversification = () => {
   const [activeTab, setActiveTab] = useState("correlation");
   
-  // Fetch correlation matrix data
-  const { data: correlationData, isLoading: correlationLoading, refetch: refetchCorrelation } = useQuery({
-    queryKey: ["/api/portfolio/correlation"],
-    refetchInterval: 300000, // Refetch every 5 minutes
-  });
-
-  // Fetch volatility data
-  const { data: volatilityData, isLoading: volatilityLoading, refetch: refetchVolatility } = useQuery({
-    queryKey: ["/api/portfolio/volatility"],
-    refetchInterval: 300000, // Refetch every 5 minutes
-  });
-
-  // Fetch recommendations
-  const { data: recommendationsData, isLoading: recommendationsLoading, refetch: refetchRecommendations } = useQuery({
-    queryKey: ["/api/portfolio/recommendations"],
-    refetchInterval: 300000, // Refetch every 5 minutes
-  });
+  // Use the portfolio diversification hook
+  const {
+    correlation: { data: correlationData, isLoading: correlationLoading },
+    volatility: { data: volatilityData, isLoading: volatilityLoading },
+    recommendations: { data: recommendationsData, isLoading: recommendationsLoading },
+    updateAnalysis,
+    isLoading
+  } = usePortfolioDiversification();
 
   // Handler for manual update
   const handleManualUpdate = async () => {
     try {
-      await apiRequest("/api/portfolio/update", {
-        method: "POST",
-      });
-      // Refetch all data
-      refetchCorrelation();
-      refetchVolatility();
-      refetchRecommendations();
+      await updateAnalysis();
     } catch (error) {
       console.error("Error updating portfolio analysis data:", error);
     }
