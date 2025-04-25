@@ -101,7 +101,12 @@ export default function MetricCard({
             "text-xl md:text-2xl font-bold mb-0.5 transition-all duration-300",
             isAnimating && "text-primary-light scale-105",
           )}>
-            <span className="font-mono tracking-tight">{formattedValue}</span>
+            <span 
+              id={`metric-value-${title.replace(/\s+/g, '-').toLowerCase()}`}
+              className="font-mono tracking-tight"
+            >
+              {formattedValue}
+            </span>
             {subtitle && (
               <span className="text-sm font-normal text-muted-foreground ml-1">
                 {subtitle}

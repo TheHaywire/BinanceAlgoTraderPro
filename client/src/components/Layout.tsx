@@ -13,12 +13,31 @@ export default function Layout({ children }: LayoutProps) {
     // Create WebSocket connection
     const ws = createWebSocketConnection();
     setSocket(ws);
+    
+    // Maintain a global WebSocket reference for components
+    window.tradingSocket = ws;
+    
+    // Function to track message timestamps for connection monitoring
+    const trackMessageTimestamp = () => {
+      // Update the last activity timestamp for connection monitoring
+      window.dispatchEvent(new CustomEvent('ws:message'));
+    };
+    
+    // Listen for all WebSocket messages to update the last message timestamp
+    ws.addEventListener('message', trackMessageTimestamp);
 
     // Clean up on unmount
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
+      if (ws) {
+        ws.removeEventListener('message', trackMessageTimestamp);
+        
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
       }
+      
+      // Clear global reference
+      delete window.tradingSocket;
     };
   }, []);
 

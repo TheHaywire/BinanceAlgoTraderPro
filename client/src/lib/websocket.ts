@@ -45,7 +45,7 @@ export function createWebSocketConnection(): WebSocket {
     reconnectAttempts = 0;
     lastMessageTime = Date.now();
     wsInstance = socket;
-    emitWsEvent('ws:connected');
+    emitWsEvent('ws:open');
     
     // Resubscribe to any pending subscriptions
     if (pendingSubscriptions.length > 0) {

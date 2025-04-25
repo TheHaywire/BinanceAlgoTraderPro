@@ -427,4 +427,15 @@
   .score-fill {
     animation: score-fill 1s ease-out forwards;
   }
+  
+  /* Flash animation for live data updates */
+  @keyframes flash-update {
+    0% { color: hsl(var(--foreground)); }
+    30% { color: hsl(var(--primary)); }
+    100% { color: hsl(var(--foreground)); }
+  }
+  
+  .flash-update {
+    animation: flash-update 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
