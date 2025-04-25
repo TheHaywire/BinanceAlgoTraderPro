@@ -168,7 +168,11 @@ export function createWebSocketConnection(): WebSocket {
     };
     
     socket.onclose = (event) => {
-      console.warn(`WebSocket closed: ${event.code} ${event.reason}`);
+      console.warn(`WebSocket closed: ${event.code} ${event.reason || ''}`);
+      connectionStatus = 'disconnected';
+      
+      // Special handling for code 1006 (abnormal closure) which happens frequently in Replit
+      const isAbnormalClosure = event.code === 1006;
       
       // Clean up heartbeat interval
       if (heartbeatInterval) {
@@ -181,38 +185,62 @@ export function createWebSocketConnection(): WebSocket {
         wsInstance = null;
       }
       
-      // Implement exponential backoff for reconnections
-      if (reconnectAttempts < maxReconnectAttempts) {
+      // For abnormal closures (code 1006), use faster reconnection with less backoff
+      const currentMaxAttempts = isAbnormalClosure 
+        ? Math.max(30, maxReconnectAttempts) // More attempts for abnormal closures
+        : maxReconnectAttempts;
+      
+      // Implement improved exponential backoff for reconnections
+      if (reconnectAttempts < currentMaxAttempts) {
         reconnectAttempts++;
-        // Exponential backoff with jitter to prevent thundering herd
-        const exponentialDelay = Math.min(
-          maxReconnectDelay, 
-          baseReconnectDelay * Math.pow(1.5, reconnectAttempts - 1)
-        );
+        
+        // For abnormal closures, use faster reconnect initially
+        let exponentialDelay;
+        if (isAbnormalClosure && reconnectAttempts <= 3) {
+          // Use very short delay for first few attempts with abnormal closures
+          exponentialDelay = baseReconnectDelay;
+        } else {
+          // Standard exponential backoff with less aggressive growth
+          exponentialDelay = Math.min(
+            maxReconnectDelay, 
+            baseReconnectDelay * Math.pow(1.3, reconnectAttempts - 1)
+          );
+        }
+        
+        // Add jitter to prevent reconnection thundering herd
         const jitter = 0.1 * exponentialDelay * Math.random();
         const delay = Math.floor(exponentialDelay + jitter);
         
-        console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+        console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${currentMaxAttempts})`);
         emitWsEvent('ws:reconnecting', { 
           attempt: reconnectAttempts, 
-          maxAttempts: maxReconnectAttempts,
-          delay 
+          maxAttempts: currentMaxAttempts,
+          delay,
+          abnormalClosure: isAbnormalClosure
         });
         
-        // Schedule reconnect
+        // Schedule reconnect with delay
         reconnectTimeout = window.setTimeout(() => {
           reconnectTimeout = null;
+          // Try a fresh connection by clearing any old state
           createWebSocketConnection();
         }, delay);
       } else {
-        console.error(`WebSocket reconnection failed after ${maxReconnectAttempts} attempts`);
+        console.error(`WebSocket reconnection failed after ${reconnectAttempts} attempts`);
         emitWsEvent('ws:disconnected', { permanent: true });
         
         // Last resort: try again after a longer delay
         reconnectTimeout = window.setTimeout(() => {
           reconnectAttempts = 0;
+          // Force page refresh if we've been trying for a very long time
+          if (isAbnormalClosure && Math.random() < 0.1) {
+            // In 10% of cases, suggest a page reload to the user via an event
+            emitWsEvent('ws:suggest_reload', {
+              message: "Connection issues detected. Please reload the page for better performance."
+            });
+          }
           createWebSocketConnection();
-        }, 60000); // Wait a full minute before trying again
+        }, 30000); // Wait 30 seconds before trying again
       }
     };
     

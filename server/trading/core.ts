@@ -777,7 +777,7 @@ export class TradingCore extends EventEmitter {
         if (orderError.response?.data?.code === -1111 || orderError.response?.data?.code === -4164) {
           console.log(`Retrying with adjusted quantity...`);
           // For minimum notional errors, increase quantity
-          const adjustedQuantity = roundedQuantity * 1.5;
+          const adjustedQuantity = finalQuantity * 1.5;
           orderParams.quantity = this.roundToAssetPrecision(opportunity.symbol, adjustedQuantity);
           
           // Try again
