@@ -5,6 +5,7 @@ import { queryClient } from "@/lib/queryClient";
 import { executeTradingOpportunity } from "@/lib/binanceApi";
 import { toast } from "@/hooks/use-toast";
 import { STRATEGY_NAMES } from "@/lib/constants";
+import { useState } from "react";
 
 interface TradingOpportunitiesProps {
   opportunities: any[];
@@ -12,22 +13,45 @@ interface TradingOpportunitiesProps {
 }
 
 export default function TradingOpportunities({ opportunities, isLoading }: TradingOpportunitiesProps) {
+  // Track which opportunity is being executed
+  const [executingId, setExecutingId] = useState<string | null>(null);
+  
   // Execution mutation
   const executeTradeMutation = useMutation({
-    mutationFn: (opportunityId: string) => executeTradingOpportunity(opportunityId),
+    mutationFn: (opportunityId: string) => {
+      // Set the currently executing ID
+      setExecutingId(opportunityId);
+      console.log(`Executing trade for opportunity ${opportunityId}`);
+      
+      // Execute the opportunity through the API
+      return executeTradingOpportunity(opportunityId);
+    },
     onSuccess: (data) => {
+      // Clear the executing ID
+      setExecutingId(null);
+      
+      // Show success toast
       toast({
         title: "Trade Executed Successfully",
-        description: `${data.order.symbol} ${data.order.side} order placed`,
+        description: data.real 
+          ? `${data.order.symbol} ${data.order.side} order placed` 
+          : `${data.order.symbol} simulated ${data.order.side} order processed`,
         variant: "default",
       });
+      
+      // Refresh related data
       queryClient.invalidateQueries({ queryKey: ['/api/binance/positions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/binance/opportunities'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/binance/performance'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Clear the executing ID
+      setExecutingId(null);
+      
+      // Show error toast
       toast({
         title: "Trade Execution Failed",
-        description: error.message,
+        description: error?.message || "Unknown error occurred",
         variant: "destructive",
       });
     }
@@ -140,9 +164,9 @@ export default function TradingOpportunities({ opportunities, isLoading }: Tradi
                       } text-white shadow-lg h-8
                     `}
                     onClick={() => executeTradeMutation.mutate(opportunity.id)}
-                    disabled={executeTradeMutation.isPending}
+                    disabled={executeTradeMutation.isPending || executingId === opportunity.id}
                   >
-                    {executeTradeMutation.isPending ? (
+                    {(executeTradeMutation.isPending && executingId === opportunity.id) ? (
                       <div className="flex items-center">
                         <div className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin mr-1"></div>
                         <span>Executing</span>

@@ -1,12 +1,16 @@
 import { TradingOpportunity, Position, StrategyType, WSMessage } from "./types";
 
-// WebSocket keepalive state
+// WebSocket connection state manager
 let lastMessageTime = Date.now();
+let lastPingTime = Date.now();
 let heartbeatInterval: number | null = null;
 let reconnectTimeout: number | null = null;
+let pingTimeout: number | null = null;
 let wsInstance: WebSocket | null = null;
 let pendingSubscriptions: { type: string; channel: string; data?: any }[] = [];
 let connectionAttempts = 0;
+let connectionStatus = 'disconnected';
+let isReconnecting = false;
 
 // Custom events for WebSocket status
 const emitWsEvent = (eventName: string, detail = {}) => {
@@ -48,14 +52,54 @@ export function createWebSocketConnection(): WebSocket {
     
     socket.onopen = () => {
       console.log("WebSocket connection established");
+      
+      // Reset connection tracking variables
       reconnectAttempts = 0;
       connectionAttempts = 0;
+      isReconnecting = false;
       lastMessageTime = Date.now();
+      lastPingTime = Date.now();
+      connectionStatus = 'connected';
       wsInstance = socket;
+      
+      // Emit event that connection is established
       emitWsEvent('ws:open');
       
-      // Immediately send an initial ping to verify connection
-      socket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+      // Immediately send an initial ping to verify connection is working both ways
+      try {
+        socket.send(JSON.stringify({ 
+          type: 'ping', 
+          timestamp: Date.now(),
+          clientId: Math.random().toString(36).substring(2, 10) // Include a client identifier
+        }));
+      } catch (error) {
+        console.error("Error sending initial ping:", error);
+      }
+      
+      // Set up a ping timeout to verify we get a response
+      if (pingTimeout) {
+        clearTimeout(pingTimeout);
+      }
+      
+      pingTimeout = window.setTimeout(() => {
+        // If we haven't received any message after initial ping, connection might be half-open
+        if (Date.now() - lastMessageTime > 5000) {
+          console.warn("No response received after initial connection, server might not be responding");
+          
+          // Try one more ping
+          try {
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify({ 
+                type: 'ping', 
+                timestamp: Date.now(),
+                retry: true
+              }));
+            }
+          } catch (error) {
+            console.error("Error sending verification ping:", error);
+          }
+        }
+      }, 5000);
       
       // Resubscribe to any pending subscriptions with a slight delay
       // to ensure the connection is stable
@@ -63,12 +107,20 @@ export function createWebSocketConnection(): WebSocket {
         setTimeout(() => {
           if (socket.readyState === WebSocket.OPEN) {
             console.log(`Resubscribing to ${pendingSubscriptions.length} channels...`);
-            pendingSubscriptions.forEach(sub => {
+            
+            // Clone and clear the pending subscriptions
+            const subscriptionsToResend = [...pendingSubscriptions];
+            pendingSubscriptions = [];
+            
+            // Resend each subscription
+            subscriptionsToResend.forEach(sub => {
               try {
                 socket.send(JSON.stringify(sub));
                 console.log(`Resubscribed to: ${sub.channel}`);
               } catch (error) {
                 console.error(`Failed to resubscribe to ${sub.channel}:`, error);
+                // Put back in pending if failed
+                pendingSubscriptions.push(sub);
               }
             });
           }

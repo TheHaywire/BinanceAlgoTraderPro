@@ -6,6 +6,7 @@ import { closePosition } from "@/lib/binanceApi";
 import { queryClient } from "@/lib/queryClient";
 import { toast } from "@/hooks/use-toast";
 import { Position } from "@/lib/types";
+import { useState } from "react";
 
 interface ActivePositionsProps {
   positions: Position[];
@@ -13,24 +14,45 @@ interface ActivePositionsProps {
 }
 
 export default function ActivePositions({ positions, isLoading }: ActivePositionsProps) {
+  // Track which position is being closed
+  const [closingSymbol, setClosingSymbol] = useState<string | null>(null);
+  
   // Position close mutation
   const closePositionMutation = useMutation({
-    mutationFn: ({ symbol, positionSide }: { symbol: string; positionSide: 'LONG' | 'SHORT' | 'BOTH' }) => 
-      closePosition(symbol, positionSide),
-    onSuccess: () => {
+    mutationFn: ({ symbol, positionSide }: { symbol: string; positionSide: 'LONG' | 'SHORT' | 'BOTH' }) => {
+      // Set the currently closing symbol
+      setClosingSymbol(symbol);
+      console.log(`Closing position for ${symbol} (${positionSide})`);
+      
+      // Execute the close via API
+      return closePosition(symbol, positionSide);
+    },
+    onSuccess: (data) => {
+      // Clear the closing symbol
+      setClosingSymbol(null);
+      
+      // Show success toast
       toast({
         title: "Position Closed",
-        description: "Position has been closed successfully",
+        description: data.simulated
+          ? "Simulated position has been closed successfully"
+          : "Position has been closed successfully on Binance",
         variant: "default",
       });
+      
+      // Refresh related data
       queryClient.invalidateQueries({ queryKey: ['/api/binance/positions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/binance/opportunities'] });
       queryClient.invalidateQueries({ queryKey: ['/api/binance/performance'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Clear the closing symbol
+      setClosingSymbol(null);
+      
+      // Show error toast
       toast({
         title: "Close Position Failed",
-        description: error.message,
+        description: error?.message || "Unknown error occurred",
         variant: "destructive",
       });
     }
@@ -181,9 +203,9 @@ export default function ActivePositions({ positions, isLoading }: ActivePosition
                           symbol: position.symbol, 
                           positionSide
                         })}
-                        disabled={closePositionMutation.isPending}
+                        disabled={closePositionMutation.isPending || closingSymbol === position.symbol}
                       >
-                        {closePositionMutation.isPending ? (
+                        {(closePositionMutation.isPending && closingSymbol === position.symbol) ? (
                           <div className="flex items-center">
                             <div className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin mr-1"></div>
                             <span>Closing</span>
