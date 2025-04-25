@@ -171,8 +171,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize trading data
   await initializeData();
   
-  // Set up system logs routes
+  // Set up system logs routes and setup log event listener
   setupLogRoutes(app);
+  
+  // Add a function to broadcast system logs
+  function broadcastSystemLog(logEntry: any) {
+    broadcastToClients({
+      type: 'system_log',
+      data: logEntry
+    });
+  }
+  
+  // Set up a WebSocket message handler for system logs
+  setInterval(() => {
+    // Periodically broadcast any new log entries
+    const { getLogs } = require('./routes/logs');
+    const logs = getLogs();
+    if (logs && logs.length > 0) {
+      const latestLog = logs[0]; // Logs are in reverse chronological order
+      
+      if (latestLog && latestLog.timestamp > Date.now() - 1000) {
+        // Only broadcast logs that are less than 1 second old
+        broadcastSystemLog(latestLog);
+      }
+    }
+  }, 500); // Check every 500ms for new logs
   
   // Log system start
   addSystemLog('info', 'AlgoTrader system initialized', 'system');
@@ -1098,16 +1121,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else if (data.channel === 'system_logs') {
             // Send system logs
             if (ws.readyState === WebSocket.OPEN) {
-              const logs = getLogs();
-              
-              ws.send(JSON.stringify({
-                type: 'system_logs',
-                data: logs,
-                timestamp: Date.now()
-              }));
-              
-              // Also log this subscription
-              addSystemLog('info', `Client ${clientId} subscribed to system logs`, 'websocket');
+              try {
+                const { getLogs } = require('./routes/logs');
+                const logs = getLogs();
+                
+                ws.send(JSON.stringify({
+                  type: 'system_logs',
+                  data: logs,
+                  timestamp: Date.now()
+                }));
+                
+                // Also log this subscription
+                console.log(`Client subscribed to system logs channel`);
+                addSystemLog('info', 'Client subscribed to system logs channel', 'websocket');
+              } catch (error) {
+                console.error('Error sending system logs:', error);
+              }
             }
           }
           

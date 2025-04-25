@@ -58,27 +58,8 @@ export function addSystemLog(
     console[level](`[${source}] ${message}`, data || '');
   }
 
-  // Attempt to broadcast new log entry to clients (if wss is available)
-  try {
-    // Get a reference to the wss from the parent scope
-    const { wss } = require('../routes');
-    
-    if (wss && wss.clients) {
-      wss.clients.forEach((client: any) => {
-        if (client.readyState === 1) { // WebSocket.OPEN
-          client.send(JSON.stringify({
-            type: 'system_log',
-            data: logEntry,
-            timestamp: Date.now()
-          }));
-        }
-      });
-    }
-  } catch (error) {
-    // Log broadcast failed, but we don't want to throw an error
-    // This can happen during initialization when wss isn't ready yet
-    console.debug('Failed to broadcast log entry', error);
-  }
+  // We'll handle broadcasting via the routes.ts broadcastToClients function
+  // The log entry will be accessible in systemLogs
 
   return logEntry;
 }
