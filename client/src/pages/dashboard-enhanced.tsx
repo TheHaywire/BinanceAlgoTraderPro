@@ -512,18 +512,26 @@ export default function DashboardEnhanced() {
 
   return (
     <div className="relative min-h-screen bg-nebula bg-dashboard-grid">
+      {/* Particle Background */}
+      <ParticleBackground 
+        color="#0095FF" 
+        particleCount={50} 
+        particleSpeed={0.3} 
+        className="fixed inset-0 z-0 opacity-20" 
+      />
+      
       {/* Dashboard Header */}
-      <header className="bg-dashboard-header py-3 px-6 sticky top-0 z-20">
+      <header className="bg-dashboard-header py-3 px-6 sticky top-0 z-20 border-glow-primary">
         <div className="flex justify-between items-center">
           <div className="flex items-center">
-            <div className="text-gradient-blue font-bold text-2xl mr-4">AlgoTrader</div>
+            <div className="text-gradient-blue gradient-text font-bold text-2xl mr-4">AlgoTrader</div>
             
             <div className="hidden md:flex items-center space-x-6 text-sm ml-8">
-              <a href="/dashboard" className="text-primary border-b-2 border-primary pb-1">Dashboard</a>
-              <a href="/markets" className="text-[rgba(255,255,255,0.6)] hover:text-white">Markets</a>
-              <a href="/strategies" className="text-[rgba(255,255,255,0.6)] hover:text-white">Strategies</a>
-              <a href="/analytics" className="text-[rgba(255,255,255,0.6)] hover:text-white">Analytics</a>
-              <a href="/settings" className="text-[rgba(255,255,255,0.6)] hover:text-white">Settings</a>
+              <a href="/dashboard" className="text-primary border-b-2 border-primary pb-1 glow-border">Dashboard</a>
+              <a href="/markets" className="text-[rgba(255,255,255,0.6)] hover:text-white hover:glow-border">Markets</a>
+              <a href="/strategies" className="text-[rgba(255,255,255,0.6)] hover:text-white hover:glow-border">Strategies</a>
+              <a href="/analytics" className="text-[rgba(255,255,255,0.6)] hover:text-white hover:glow-border">Analytics</a>
+              <a href="/settings" className="text-[rgba(255,255,255,0.6)] hover:text-white hover:glow-border">Settings</a>
             </div>
           </div>
           
@@ -648,13 +656,19 @@ export default function DashboardEnhanced() {
             </div>
             
             {/* Strategy Allocation Panel */}
-            <StrategyAllocation allocations={strategyAllocations} />
+            <GlowingCard className="float-animation" glowColor="#0095FF" glowIntensity="low">
+              <StrategyAllocation allocations={strategyAllocations} />
+            </GlowingCard>
             
             {/* Market Strength Indicator */}
-            <MarketStrength symbols={marketStrengthData} />
+            <GlowingCard className="float-animation" glowColor="#00C897" glowIntensity="low">
+              <MarketStrength symbols={marketStrengthData} />
+            </GlowingCard>
             
             {/* Price Alert Component */}
-            <PriceAlertComponent />
+            <GlowingCard className="float-animation" glowColor="#FF3B69" glowIntensity="low">
+              <PriceAlertComponent />
+            </GlowingCard>
           </div>
           
           {/* Main Content Area */}
@@ -695,7 +709,7 @@ export default function DashboardEnhanced() {
             </div>
             
             {/* Risk Management Bar */}
-            <div className="card-dashboard p-4">
+            <GlowingCard className="card-dashboard p-4 border-glow-animate" glowColor="#FF3B69" glowIntensity="medium">
               <h3 className="font-medium mb-3 flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-primary">
                   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
@@ -708,7 +722,7 @@ export default function DashboardEnhanced() {
                 riskMetrics={riskMetrics}
                 isLoading={riskLoading}
               />
-            </div>
+            </GlowingCard>
             
             {/* Main Tabs for content */}
             <Tabs defaultValue="opportunities" className="w-full">
@@ -761,7 +775,7 @@ export default function DashboardEnhanced() {
             </Tabs>
             
             {/* System Logs */}
-            <div className="card-dashboard">
+            <GlowingCard className="card-dashboard" glowIntensity="low" glowColor="#0095FF">
               <div className="flex justify-between items-center p-4 border-b border-[rgba(73,86,118,0.15)]">
                 <h3 className="font-medium flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 text-primary">
@@ -776,15 +790,15 @@ export default function DashboardEnhanced() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="bg-[rgba(0,149,255,0.1)] border-[rgba(0,149,255,0.2)] text-primary hover:bg-[rgba(0,149,255,0.2)]"
+                  className="bg-[rgba(0,149,255,0.1)] border-[rgba(0,149,255,0.2)] text-primary hover:bg-[rgba(0,149,255,0.2)] glow-border"
                 >
                   Clear Logs
                 </Button>
               </div>
-              <div className="max-h-64 overflow-y-auto">
+              <div className="max-h-64 overflow-y-auto bg-[rgba(10,15,25,0.8)]">
                 <LogViewer />
               </div>
-            </div>
+            </GlowingCard>
           </div>
         </div>
       </main>
