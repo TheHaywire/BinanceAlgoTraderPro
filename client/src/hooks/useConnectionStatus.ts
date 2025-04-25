@@ -1,101 +1,66 @@
 import { useState, useEffect } from 'react';
-
-export type ConnectionState = 'connected' | 'connecting' | 'reconnecting' | 'disconnected' | 'stale';
-
-interface ConnectionStatus {
-  state: ConnectionState;
-  lastActivity: number;
-  reconnectAttempt: number;
-  maxReconnectAttempts: number;
-  timeSinceLastMessage: number;
-}
-
-const STALE_THRESHOLD = 15000; // 15 seconds
-const DISCONNECT_THRESHOLD = 30000; // 30 seconds
-const MAX_RECONNECT_ATTEMPTS = 10;
+import { getConnectionStatus } from '@/lib/websocket';
 
 /**
- * Hook for tracking WebSocket connection status and health
- * Listens for WebSocket events and provides real-time connection status information
+ * Enhanced hook for tracking WebSocket connection status and health
+ * Maps the raw WebSocket connection status to our application status format
+ * Provides real-time connection status information
  */
-export function useConnectionStatus(): ConnectionStatus {
-  const [state, setState] = useState<ConnectionState>('connecting');
-  const [lastActivity, setLastActivity] = useState<number>(Date.now());
-  const [reconnectAttempt, setReconnectAttempt] = useState<number>(0);
-  const [timeSinceLastMessage, setTimeSinceLastMessage] = useState<number>(0);
+export function useConnectionStatus() {
+  const [status, setStatus] = useState<'connected' | 'connecting' | 'disconnected' | 'reconnecting'>('connecting');
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(Date.now());
+  const [reconnectAttempts, setReconnectAttempts] = useState<number>(0);
+  const [isReconnecting, setIsReconnecting] = useState<boolean>(false);
   
   useEffect(() => {
-    // Event listener for custom connection state events
-    const handleOpen = () => {
-      setState('connected');
-      setLastActivity(Date.now());
-      setReconnectAttempt(0);
+    // Function to synchronize state with global WebSocket status
+    const syncStatus = () => {
+      const connectionStatus = getConnectionStatus();
+      setStatus(connectionStatus.status);
+      setLastUpdateTime(connectionStatus.lastUpdateTime);
+      setReconnectAttempts(connectionStatus.reconnectAttempts);
+      setIsReconnecting(connectionStatus.isReconnecting);
     };
     
-    const handleClose = () => {
-      setState('disconnected');
-      setLastActivity(Date.now());
-    };
+    // Initial sync
+    syncStatus();
     
-    const handleConnecting = () => {
-      setState('connecting');
-      setLastActivity(Date.now());
-    };
+    // Event listeners for connection state changes
+    const handleOpen = () => syncStatus();
+    const handleClose = () => syncStatus();
+    const handleConnecting = () => syncStatus();
+    const handleReconnecting = () => syncStatus();
+    const handleMessage = () => syncStatus();
     
-    const handleReconnecting = (e: CustomEvent) => {
-      setState('reconnecting');
-      setLastActivity(Date.now());
-      if (e.detail && e.detail.attempt) {
-        setReconnectAttempt(e.detail.attempt);
-      }
-    };
+    // Timer to periodically check connection status
+    const intervalId = setInterval(syncStatus, 1000);
     
-    const handleMessage = () => {
-      if (state !== 'connected') {
-        setState('connected');
-      }
-      setLastActivity(Date.now());
-    };
-    
-    // Setup timer to check connection staleness
-    const intervalId = setInterval(() => {
-      const now = Date.now();
-      const timeSince = now - lastActivity;
-      setTimeSinceLastMessage(timeSince);
-      
-      // Auto-detect stale or disconnected state
-      if (state === 'connected' && timeSince > STALE_THRESHOLD) {
-        setState('stale');
-      }
-      
-      if ((state === 'connected' || state === 'stale') && timeSince > DISCONNECT_THRESHOLD) {
-        setState('disconnected');
-      }
-    }, 1000);
-    
-    // Listen for custom WebSocket connection events
+    // Listen for WebSocket events
     window.addEventListener('ws:open', handleOpen);
     window.addEventListener('ws:close', handleClose);
     window.addEventListener('ws:connecting', handleConnecting);
-    window.addEventListener('ws:reconnecting', handleReconnecting as EventListener);
+    window.addEventListener('ws:reconnecting', handleReconnecting);
     window.addEventListener('ws:message', handleMessage);
+    window.addEventListener('ws:message_received', handleMessage);
+    window.addEventListener('ws:heartbeat', handleMessage);
     
     // Cleanup event listeners
     return () => {
       window.removeEventListener('ws:open', handleOpen);
       window.removeEventListener('ws:close', handleClose);
       window.removeEventListener('ws:connecting', handleConnecting);
-      window.removeEventListener('ws:reconnecting', handleReconnecting as EventListener);
+      window.removeEventListener('ws:reconnecting', handleReconnecting);
       window.removeEventListener('ws:message', handleMessage);
+      window.removeEventListener('ws:message_received', handleMessage);
+      window.removeEventListener('ws:heartbeat', handleMessage);
       clearInterval(intervalId);
     };
-  }, [state, lastActivity]);
+  }, []);
   
   return {
-    state,
-    lastActivity,
-    reconnectAttempt,
-    maxReconnectAttempts: MAX_RECONNECT_ATTEMPTS,
-    timeSinceLastMessage,
+    status,
+    lastUpdateTime,
+    reconnectAttempts,
+    isReconnecting
   };
 }

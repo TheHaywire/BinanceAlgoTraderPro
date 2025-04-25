@@ -60,9 +60,13 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({
       const radius = Math.random() * 2 + 0.5;
       const maxLife = Math.random() * 100 + 100;
       
+      // Safety check to address TypeScript's null concern
+      // We already have the null check at the top of useEffect that returns early if canvas is null
+      const safeCanvas = canvas as HTMLCanvasElement;
+      
       particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: Math.random() * safeCanvas.width,
+        y: Math.random() * safeCanvas.height,
         radius,
         vx: (Math.random() - 0.5) * particleSpeed,
         vy: (Math.random() - 0.5) * particleSpeed,
@@ -74,8 +78,12 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({
 
     // Animation loop
     function animate() {
+      // Null checks - since we already check at the top of the useEffect, cast as non-null
+      const safeCtx = ctx as CanvasRenderingContext2D;
+      const safeCanvas = canvas as HTMLCanvasElement;
+      
       // Clear canvas
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      safeCtx.clearRect(0, 0, safeCanvas.width, safeCanvas.height);
       
       // Draw and update particles
       for (let i = 0; i < particles.length; i++) {
@@ -93,12 +101,12 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({
         }
         
         // Set color with opacity
-        ctx.fillStyle = `${color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+        safeCtx.fillStyle = `${color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
         
         // Draw circle
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
+        safeCtx.beginPath();
+        safeCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        safeCtx.fill();
         
         // Update position
         p.x += p.vx;
@@ -110,9 +118,9 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({
         // Check if particle is dead or out of bounds
         if (p.life >= p.maxLife || 
             p.x < -p.radius || 
-            p.x > canvas.width + p.radius || 
+            p.x > safeCanvas.width + p.radius || 
             p.y < -p.radius || 
-            p.y > canvas.height + p.radius) {
+            p.y > safeCanvas.height + p.radius) {
           // Replace particle
           particles.splice(i, 1);
           createParticle();
@@ -128,12 +136,12 @@ export const ParticleBackground: React.FC<ParticleBackgroundProps> = ({
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           if (distance < 100) {
-            ctx.strokeStyle = `${color}${Math.floor((1 - distance / 100) * 40).toString(16).padStart(2, '0')}`;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
+            safeCtx.strokeStyle = `${color}${Math.floor((1 - distance / 100) * 40).toString(16).padStart(2, '0')}`;
+            safeCtx.lineWidth = 0.5;
+            safeCtx.beginPath();
+            safeCtx.moveTo(particles[i].x, particles[i].y);
+            safeCtx.lineTo(particles[j].x, particles[j].y);
+            safeCtx.stroke();
           }
         }
       }

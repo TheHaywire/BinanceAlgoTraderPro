@@ -31,61 +31,8 @@ import { toast } from "@/hooks/use-toast";
 import { executeTradingOpportunity } from "@/lib/binanceApi";
 import { POPULAR_SYMBOLS, STRATEGY_NAMES } from "@/lib/constants";
 
-// Connection status badge component
-const ConnectionStatusBadge = () => {
-  const { status, lastUpdateTime } = useConnectionStatus();
-  
-  const getStatusMessage = () => {
-    switch (status) {
-      case "healthy":
-        return "Real-time data connection active";
-      case "warning":
-        return "Data connection delayed, some prices may be stale";
-      case "error":
-        return "Connection lost, prices may be outdated";
-      case "connecting":
-        return "Establishing data connection...";
-      default:
-        return "Unknown connection status";
-    }
-  };
-  
-  const getTimeSinceUpdate = () => {
-    const now = Date.now();
-    const diff = now - lastUpdateTime;
-    if (diff < 10000) return "Updated just now";
-    if (diff < 60000) return `Updated ${Math.floor(diff / 1000)}s ago`;
-    return `Updated ${Math.floor(diff / 60000)}m ago`;
-  };
-
-  const getStatusColor = () => {
-    switch (status) {
-      case "healthy": return "bg-green-500";
-      case "warning": return "bg-yellow-500";
-      case "error": return "bg-red-500";
-      case "connecting": return "bg-blue-500";
-      default: return "bg-gray-500";
-    }
-  };
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center space-x-2 rounded-full bg-[rgba(16,22,34,0.6)] border border-[rgba(73,86,118,0.2)] p-1.5 px-3">
-            <StatusIndicator status={status} size="sm" className="flex-shrink-0" />
-            <span className="text-xs text-[rgba(255,255,255,0.6)]">
-              {getTimeSinceUpdate()}
-            </span>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{getStatusMessage()}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-};
+// Import the enhanced ConnectionStatusBadge from UI components
+import ConnectionStatusBadge from '@/components/ui/ConnectionStatusBadge';
 
 // Market Regime Indicator
 const MarketRegimeIndicator = ({ regime }) => {
