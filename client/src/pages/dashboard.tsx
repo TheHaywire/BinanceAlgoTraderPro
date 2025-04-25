@@ -241,6 +241,7 @@ export default function Dashboard() {
             value={portfolioValue}
             subtitle="USDT"
             icon="ri-funds-line"
+            isLive={true}
             trend={{
               value: `${parseFloat(portfolioChange) >= 0 ? "+" : ""}${portfolioChange}%`,
               direction: parseFloat(portfolioChange) >= 0 ? "up" : "down",
@@ -253,6 +254,7 @@ export default function Dashboard() {
             value={positions.length}
             subtitle={`/ ${riskMetrics.maxPositions} max`}
             icon="ri-exchange-funds-line"
+            isLive={true}
             progress={{
               value: positions.length,
               max: riskMetrics.maxPositions
@@ -264,6 +266,7 @@ export default function Dashboard() {
             value={`${parseFloat(dailyPnL) >= 0 ? "+" : ""}${dailyPnL}`}
             subtitle="USDT"
             icon="ri-line-chart-line"
+            isLive={true}
             trend={{
               value: `${parseFloat(dailyPnLPercent) >= 0 ? "+" : ""}${dailyPnLPercent}%`,
               direction: parseFloat(dailyPnLPercent) >= 0 ? "up" : "down",
@@ -288,6 +291,7 @@ export default function Dashboard() {
             value={autoTradingEnabled ? "Active" : "Paused"}
             subtitle={`Last scan: ${formatTimestamp(lastScanTime)}`}
             icon="ri-robot-line"
+            isLive={autoTradingEnabled}
             trend={{
               value: `${scanInterval}min intervals`,
               direction: "neutral",

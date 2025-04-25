@@ -114,14 +114,32 @@ const initializeData = async () => {
   }
 };
 
-// Broadcast messages to all connected WebSocket clients
+// Broadcast messages to all connected WebSocket clients with timestamp
 const broadcastToClients = (message: any) => {
-  const messageStr = JSON.stringify(message);
+  // Add timestamp to track data freshness
+  const messageWithTimestamp = {
+    ...message,
+    timestamp: Date.now()
+  };
+  
+  const messageStr = JSON.stringify(messageWithTimestamp);
+  let activeClients = 0;
+  
   wsClients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(messageStr);
+      try {
+        client.send(messageStr);
+        activeClients++;
+      } catch (error) {
+        console.error('Error broadcasting to client:', error);
+      }
     }
   });
+  
+  // Log only for important updates, not for heartbeats
+  if (message.type !== 'heartbeat') {
+    console.log(`Broadcast ${message.type} to ${activeClients} active clients`);
+  }
 };
 
 import apiRoutes from "./routes/index";

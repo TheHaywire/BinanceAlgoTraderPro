@@ -3,50 +3,56 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Dark Mode Foundation */
-  --background: 222 25% 9%;
-  --foreground: 0 0% 98%;
+  /* Ultra Premium Dark Mode Foundation - Deeper, richer base */
+  --background: 225 30% 7%;
+  --foreground: 210 5% 98%;
   
-  /* Component Base Colors */
-  --muted: 215 25% 15%;
-  --muted-foreground: 218 11% 65%;
-  --popover: 220 20% 12%;
-  --popover-foreground: 0 0% 98%;
-  --card: 222 30% 14%;
-  --card-foreground: 0 0% 98%;
+  /* Component Base Colors - More contrast, higher quality feel */
+  --muted: 220 28% 13%;
+  --muted-foreground: 220 15% 70%;
+  --popover: 225 25% 10%;
+  --popover-foreground: 210 5% 98%;
+  --card: 225 32% 12%;
+  --card-foreground: 210 5% 98%;
   
-  /* Borders and Controls */
-  --border: 215 20% 20%;
-  --input: 215 25% 18%;
+  /* Borders and Controls - More subtle, premium borders */
+  --border: 220 20% 18%;
+  --input: 222 28% 16%;
   
-  /* Primary Action Blue */
-  --primary: 207 100% 50%;
+  /* Electric Blue Primary - Vibrant, energetic blue */
+  --primary: 195 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --primary-light: 204 100% 72%; 
-  --primary-dark: 210 100% 40%;
+  --primary-light: 195 100% 75%; 
+  --primary-dark: 200 100% 40%;
   
-  /* Secondary Elements */
-  --secondary: 214 32% 25%;
+  /* Secondary Elements - Deeper, richer tones */
+  --secondary: 220 35% 22%;
   --secondary-foreground: 0 0% 98%;
-  --secondary-light: 214 30% 35%;
-  --secondary-dark: 216 35% 18%;
+  --secondary-light: 220 32% 32%;
+  --secondary-dark: 222 38% 15%;
   
-  /* Accent Highlights */
-  --accent: 262 100% 60%;
+  /* Teal Accent - Modern, sophisticated secondary color */
+  --accent: 175 100% 45%;
   --accent-foreground: 0 0% 98%;
-  --accent-light: 262 85% 70%;
-  --accent-dark: 267 85% 50%;
+  --accent-light: 175 90% 55%;
+  --accent-dark: 175 100% 35%;
   
-  /* Semantic Colors */
-  --destructive: 341 95% 60%;
+  /* Semantic Colors - Refined and clear */
+  --destructive: 355 95% 55%;
   --destructive-foreground: 0 0% 98%;
-  --destructive-light: 341 85% 70%;
-  --destructive-dark: 341 85% 45%;
+  --destructive-light: 355 90% 65%;
+  --destructive-dark: 355 100% 45%;
   
-  --success: 162 100% 40%;
+  --success: 160 100% 42%;
   --success-foreground: 0 0% 98%;
-  --success-light: 162 90% 52%;
-  --success-dark: 165 95% 35%;
+  --success-light: 160 95% 55%;
+  --success-dark: 160 100% 35%;
+  
+  /* New: Warning Colors */
+  --warning: 35 100% 50%;
+  --warning-foreground: 0 0% 10%;
+  --warning-light: 35 100% 65%;
+  --warning-dark: 35 100% 40%;
   
   --warning: 37 100% 50%;
   --warning-foreground: 0 0% 98%;
