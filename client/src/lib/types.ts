@@ -34,13 +34,15 @@ export interface TradingOpportunity {
   strategy: StrategyType;
   direction: 'LONG' | 'SHORT';
   entryPrice: string;
-  targetPrice: string;
+  targetPrice?: string;
+  takeProfit?: string;
   stopLoss: string;
   riskRewardRatio: number;
-  signalTime: string;
+  signalTime?: string;
+  timestamp?: number;
   confidence: number;
   score: number;
-  description: string;
+  description?: string;
   createdAt?: string;
 }
 
