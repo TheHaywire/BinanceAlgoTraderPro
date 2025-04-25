@@ -677,32 +677,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   
+  // Real-time heartbeat mechanism for checking if clients are still connected
+  const heartbeatInterval = setInterval(() => {
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
+      }
+    });
+  }, 30000); // Send heartbeat every 30 seconds
+  
+  // Clean up on server shutdown
+  process.on('SIGINT', () => {
+    clearInterval(heartbeatInterval);
+    wss.close();
+    process.exit(0);
+  });
+  
   wss.on('connection', (ws) => {
     wsClients.add(ws);
+    console.log(`WebSocket client connected. Total clients: ${wsClients.size}`);
     
     // Send initial market data
-    binanceApi.getMarketData()
-      .then(data => {
+    Promise.all([
+      binanceApi.getMarketData(),
+      binanceApi.getPositions()
+    ])
+    .then(([marketData, positions]) => {
+      // Send the latest market data
+      ws.send(JSON.stringify({
+        type: 'marketUpdate',
+        data: marketData,
+        timestamp: Date.now()
+      }));
+      
+      // Also send position data
+      ws.send(JSON.stringify({
+        type: 'positionUpdate',
+        data: positions,
+        timestamp: Date.now()
+      }));
+      
+      // Also send trading core status
+      ws.send(JSON.stringify({
+        type: 'tradingStatus',
+        data: {
+          opportunities: tradingCore.getOpportunities(),
+          positions: tradingCore.getPositions(),
+          autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
+          lastScanTime: tradingCore.getLastScanTime(),
+          regimes: tradingCore.getRegimes()
+        },
+        timestamp: Date.now()
+      }));
+    })
+    .catch(error => {
+      console.error('Error sending initial data to client:', error);
+      
+      // Try to send partial data if available
+      try {
         ws.send(JSON.stringify({
-          type: 'marketUpdate',
-          data
+          type: 'systemStatus',
+          status: 'warning',
+          message: 'Some data feeds unavailable. Prices may be delayed.',
+          timestamp: Date.now()
         }));
-        
-        // Also send trading core status
-        ws.send(JSON.stringify({
-          type: 'tradingStatus',
-          data: {
-            opportunities: tradingCore.getOpportunities(),
-            positions: tradingCore.getPositions(),
-            autoTradingEnabled: tradingCore.isAutoTradingEnabled(),
-            lastScanTime: tradingCore.getLastScanTime(),
-            regimes: tradingCore.getRegimes()
-          }
-        }));
-      })
-      .catch(error => {
-        console.error('Error sending initial market data:', error);
-      });
+      } catch (sendError) {
+        console.error('Failed to send error notification to client:', sendError);
+      }
+    });
     
     ws.on('message', (message) => {
       try {
