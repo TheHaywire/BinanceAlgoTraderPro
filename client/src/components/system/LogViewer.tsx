@@ -86,7 +86,7 @@ export default function LogViewer({ className, maxEntries = 500 }: LogViewerProp
 
     // Initial data load
     if (data) {
-      setLogs(data);
+      setLogs(data as LogEntry[]);
     }
 
     // Cleanup

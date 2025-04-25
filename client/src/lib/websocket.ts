@@ -504,6 +504,100 @@ export function subscribeToTradingStatus(
   };
 }
 
+// Event handlers registry for custom events
+const eventHandlers: Record<string, Array<(data: any) => void>> = {};
+
+/**
+ * Subscribe to a specific WebSocket channel
+ */
+export function subscribe(channel: string): void {
+  const socket = createWebSocketConnection();
+  
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: 'subscribe',
+      channel
+    }));
+  } else {
+    // If socket is not open yet, add to pending subscriptions
+    const pendingSubscription = {
+      type: 'subscribe',
+      channel
+    };
+    pendingSubscriptions.push(pendingSubscription);
+  }
+}
+
+/**
+ * Unsubscribe from a specific WebSocket channel
+ */
+export function unsubscribe(channel: string): void {
+  const socket = createWebSocketConnection();
+  
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: 'unsubscribe',
+      channel
+    }));
+  }
+  
+  // Also remove from pending if it's there
+  const index = pendingSubscriptions.findIndex(sub => 
+    sub.type === 'subscribe' && sub.channel === channel
+  );
+  
+  if (index > -1) {
+    pendingSubscriptions.splice(index, 1);
+  }
+}
+
+// Flag to track if we've already set up the global message listener
+let globalMessageListenerSetup = false;
+
+/**
+ * Set up the global message listener only once
+ */
+function setupGlobalMessageListener() {
+  if (!globalMessageListenerSetup) {
+    window.addEventListener('ws:message', ((event: Event) => {
+      const customEvent = event as CustomEvent;
+      const message = customEvent.detail;
+      
+      if (message && message.type && eventHandlers[message.type]) {
+        eventHandlers[message.type].forEach(handler => handler(message.data));
+      }
+    }) as EventListener);
+    
+    globalMessageListenerSetup = true;
+  }
+}
+
+/**
+ * Register a handler for a specific event type
+ */
+export function registerHandler(eventType: string, handler: (data: any) => void): void {
+  if (!eventHandlers[eventType]) {
+    eventHandlers[eventType] = [];
+  }
+  
+  eventHandlers[eventType].push(handler);
+  
+  // Make sure we have the global listener set up
+  setupGlobalMessageListener();
+}
+
+/**
+ * Unregister a handler for a specific event type
+ */
+export function unregisterHandler(eventType: string, handler: (data: any) => void): void {
+  if (eventHandlers[eventType]) {
+    const index = eventHandlers[eventType].indexOf(handler);
+    if (index > -1) {
+      eventHandlers[eventType].splice(index, 1);
+    }
+  }
+}
+
 // Command functions to control the trading system
 export function sendTradingCommand(
   socket: WebSocket,
