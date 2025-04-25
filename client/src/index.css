@@ -195,6 +195,100 @@
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   }
   
+  /* New advanced backgrounds */
+  .bg-nebula {
+    background: 
+      radial-gradient(circle at 15% 50%, rgba(76, 0, 255, 0.08) 0%, rgba(76, 0, 255, 0) 45%),
+      radial-gradient(circle at 85% 30%, rgba(0, 217, 255, 0.08) 0%, rgba(0, 217, 255, 0) 50%),
+      linear-gradient(180deg, #090D1A 0%, #0F1631 100%);
+  }
+  
+  .bg-dashboard-grid {
+    background-image: 
+      linear-gradient(rgba(73, 86, 118, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(73, 86, 118, 0.05) 1px, transparent 1px);
+    background-size: 25px 25px;
+    background-position: center center;
+  }
+  
+  .bg-dashboard-header {
+    background: linear-gradient(90deg, rgba(8, 13, 28, 0.6) 0%, rgba(12, 19, 41, 0.8) 100%);
+    border-bottom: 1px solid rgba(73, 86, 118, 0.15);
+    backdrop-filter: blur(8px);
+  }
+  
+  .bg-data-viz {
+    background: 
+      radial-gradient(circle at top left, rgba(0, 149, 255, 0.05) 0%, rgba(0, 0, 0, 0) 50%),
+      radial-gradient(circle at bottom right, rgba(0, 217, 255, 0.05) 0%, rgba(0, 0, 0, 0) 50%),
+      linear-gradient(180deg, rgba(11, 17, 32, 0.95) 0%, rgba(15, 22, 45, 0.95) 100%);
+  }
+  
+  /* Fluorescent glow effects for borders */
+  .border-glow-primary {
+    box-shadow: 0 0 10px rgba(0, 149, 255, 0.3), 
+                inset 0 0 5px rgba(0, 149, 255, 0.1);
+  }
+  
+  .border-glow-success {
+    box-shadow: 0 0 10px rgba(0, 200, 151, 0.3), 
+                inset 0 0 5px rgba(0, 200, 151, 0.1);
+  }
+  
+  .border-glow-danger {
+    box-shadow: 0 0 10px rgba(255, 59, 105, 0.3), 
+                inset 0 0 5px rgba(255, 59, 105, 0.1);
+  }
+  
+  /* Holographic effect for special elements */
+  .holographic-bg {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+    backdrop-filter: blur(4px);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .holographic-bg::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      transparent 100%
+    );
+    animation: holographicSweep 6s ease-in-out infinite;
+  }
+  
+  @keyframes holographicSweep {
+    0% { transform: translateX(-100%); }
+    50% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  
+  /* Dashboard specific elements */
+  .dashboard-metric-pulse {
+    animation: metricPulse 2s infinite;
+  }
+  
+  @keyframes metricPulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.02); opacity: 0.9; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  
+  .dashboard-sidebar {
+    background: linear-gradient(180deg, rgba(12, 19, 35, 0.8) 0%, rgba(15, 22, 40, 0.8) 100%);
+    border-right: 1px solid rgba(73, 86, 118, 0.15);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.2);
+  }
+  
   /* Premium Text Gradients */
   .text-gradient-blue {
     background: linear-gradient(90deg, #4FBBFF 0%, #5773FF 100%);
