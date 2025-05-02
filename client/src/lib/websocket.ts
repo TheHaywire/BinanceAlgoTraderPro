@@ -56,7 +56,9 @@ export function createWebSocketConnection(): WebSocket {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const host = window.location.host;
   // Ensure the path is correctly formatted for the Replit environment
-  const wsUrl = `${protocol}//${host}/ws`;
+  // Add a unique client ID to prevent connection conflicts
+  const clientId = Math.random().toString(36).substring(2, 15);
+  const wsUrl = `${protocol}//${host}/ws?clientId=${clientId}`;
   
   console.log(`Creating WebSocket connection to ${wsUrl}`);
   

@@ -16,6 +16,11 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={DashboardEnhanced} />
+      <Route path="/dashboard-enhanced">
+        <Layout>
+          <DashboardEnhanced />
+        </Layout>
+      </Route>
       <Route path="/old-dashboard">
         <Layout>
           <Dashboard />
