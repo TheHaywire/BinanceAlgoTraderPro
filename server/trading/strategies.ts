@@ -94,12 +94,50 @@ export function generateOpportunities(marketData: any[]): TradingOpportunity[] {
 export function momentumBreakoutStrategy(candles: any[], params: any = {}): any {
   // Implementation of momentum breakout strategy logic would go here
   // This would analyze candles for breakout patterns, volume confirmation, etc.
+  
+  // Get the current price
+  const currentPrice = parseFloat(candles[candles.length - 1].close);
+  
+  // Generate signal type
+  const signalRandom = Math.random();
+  const signal = signalRandom > 0.7 ? 'BUY' : signalRandom > 0.5 ? 'SELL' : 'NEUTRAL';
+  
+  // Set direction based on signal
+  const direction = signal === 'BUY' ? 'LONG' : signal === 'SELL' ? 'SHORT' : null;
+  
+  // If no actionable signal, return early
+  if (!direction) return { signal: 'NEUTRAL' };
+  
+  // Calculate reasonable stop loss (1-2% away from entry)
+  const stopLossPercent = 1 + (Math.random() * 1);
+  const stopLoss = direction === 'LONG' 
+    ? currentPrice * (1 - stopLossPercent/100)
+    : currentPrice * (1 + stopLossPercent/100);
+    
+  // Calculate target price (2-4% move)
+  const targetPercent = stopLossPercent * (1.5 + Math.random());
+  const targetPrice = direction === 'LONG'
+    ? currentPrice * (1 + targetPercent/100)
+    : currentPrice * (1 - targetPercent/100);
+  
+  // Calculate risk-reward ratio
+  const riskAmount = Math.abs(currentPrice - stopLoss);
+  const rewardAmount = Math.abs(currentPrice - targetPrice);
+  const riskRewardRatio = rewardAmount / riskAmount;
+  
+  // Set initial score based on confidence
+  const confidence = Math.floor(Math.random() * 30) + 65;
+  const score = confidence / 10;
+  
   return {
-    signal: Math.random() > 0.7 ? 'BUY' : Math.random() > 0.5 ? 'SELL' : 'NEUTRAL',
-    confidence: Math.floor(Math.random() * 30) + 65,
-    entryPrice: parseFloat(candles[candles.length - 1].close),
-    targetPrice: 0,
-    stopLoss: 0
+    signal,
+    direction,
+    confidence,
+    score,
+    entryPrice: currentPrice,
+    targetPrice,
+    stopLoss,
+    riskRewardRatio
   };
 }
 
@@ -109,12 +147,50 @@ export function momentumBreakoutStrategy(candles: any[], params: any = {}): any 
 export function meanReversionStrategy(candles: any[], params: any = {}): any {
   // Implementation of mean reversion strategy logic would go here
   // This would analyze candles for overbought/oversold conditions, etc.
+  
+  // Get the current price
+  const currentPrice = parseFloat(candles[candles.length - 1].close);
+  
+  // Generate signal type
+  const signalRandom = Math.random();
+  const signal = signalRandom > 0.6 ? 'BUY' : signalRandom > 0.4 ? 'SELL' : 'NEUTRAL';
+  
+  // Set direction based on signal
+  const direction = signal === 'BUY' ? 'LONG' : signal === 'SELL' ? 'SHORT' : null;
+  
+  // If no actionable signal, return early
+  if (!direction) return { signal: 'NEUTRAL' };
+  
+  // Calculate reasonable stop loss (0.5-1.5% away from entry for mean reversion)
+  const stopLossPercent = 0.5 + (Math.random() * 1);
+  const stopLoss = direction === 'LONG' 
+    ? currentPrice * (1 - stopLossPercent/100)
+    : currentPrice * (1 + stopLossPercent/100);
+    
+  // Calculate target price (1-3% move)
+  const targetPercent = stopLossPercent * (1.5 + Math.random());
+  const targetPrice = direction === 'LONG'
+    ? currentPrice * (1 + targetPercent/100)
+    : currentPrice * (1 - targetPercent/100);
+  
+  // Calculate risk-reward ratio
+  const riskAmount = Math.abs(currentPrice - stopLoss);
+  const rewardAmount = Math.abs(currentPrice - targetPrice);
+  const riskRewardRatio = rewardAmount / riskAmount;
+  
+  // Set initial score based on confidence
+  const confidence = Math.floor(Math.random() * 30) + 65;
+  const score = confidence / 10;
+  
   return {
-    signal: Math.random() > 0.6 ? 'BUY' : Math.random() > 0.4 ? 'SELL' : 'NEUTRAL',
-    confidence: Math.floor(Math.random() * 30) + 65,
-    entryPrice: parseFloat(candles[candles.length - 1].close),
-    targetPrice: 0,
-    stopLoss: 0
+    signal,
+    direction,
+    confidence,
+    score,
+    entryPrice: currentPrice,
+    targetPrice,
+    stopLoss,
+    riskRewardRatio
   };
 }
 
@@ -124,12 +200,50 @@ export function meanReversionStrategy(candles: any[], params: any = {}): any {
 export function volatilityExpansionStrategy(candles: any[], params: any = {}): any {
   // Implementation of volatility expansion strategy logic would go here
   // This would analyze candles for increasing volatility, etc.
+  
+  // Get the current price
+  const currentPrice = parseFloat(candles[candles.length - 1].close);
+  
+  // Generate signal type
+  const signalRandom = Math.random();
+  const signal = signalRandom > 0.5 ? 'BUY' : signalRandom > 0.3 ? 'SELL' : 'NEUTRAL';
+  
+  // Set direction based on signal
+  const direction = signal === 'BUY' ? 'LONG' : signal === 'SELL' ? 'SHORT' : null;
+  
+  // If no actionable signal, return early
+  if (!direction) return { signal: 'NEUTRAL' };
+  
+  // Calculate reasonable stop loss (2-3% away from entry for volatility strategy)
+  const stopLossPercent = 2 + (Math.random() * 1);
+  const stopLoss = direction === 'LONG' 
+    ? currentPrice * (1 - stopLossPercent/100)
+    : currentPrice * (1 + stopLossPercent/100);
+    
+  // Calculate target price (6-12% move for volatility strategies)
+  const targetPercent = stopLossPercent * (2 + Math.random() * 2);
+  const targetPrice = direction === 'LONG'
+    ? currentPrice * (1 + targetPercent/100)
+    : currentPrice * (1 - targetPercent/100);
+  
+  // Calculate risk-reward ratio
+  const riskAmount = Math.abs(currentPrice - stopLoss);
+  const rewardAmount = Math.abs(currentPrice - targetPrice);
+  const riskRewardRatio = rewardAmount / riskAmount;
+  
+  // Set initial score based on confidence
+  const confidence = Math.floor(Math.random() * 30) + 65;
+  const score = confidence / 10;
+  
   return {
-    signal: Math.random() > 0.5 ? 'BUY' : Math.random() > 0.3 ? 'SELL' : 'NEUTRAL',
-    confidence: Math.floor(Math.random() * 30) + 65,
-    entryPrice: parseFloat(candles[candles.length - 1].close),
-    targetPrice: 0,
-    stopLoss: 0
+    signal,
+    direction,
+    confidence,
+    score,
+    entryPrice: currentPrice,
+    targetPrice,
+    stopLoss,
+    riskRewardRatio
   };
 }
 
@@ -139,12 +253,50 @@ export function volatilityExpansionStrategy(candles: any[], params: any = {}): a
 export function liquidationCascadeStrategy(candles: any[], liquidationData: any, params: any = {}): any {
   // Implementation of liquidation cascade strategy logic would go here
   // This would analyze recent liquidations for cascading effects
+  
+  // Get the current price
+  const currentPrice = parseFloat(candles[candles.length - 1].close);
+  
+  // Generate signal type
+  const signalRandom = Math.random();
+  const signal = signalRandom > 0.6 ? 'BUY' : signalRandom > 0.7 ? 'SELL' : 'NEUTRAL';
+  
+  // Set direction based on signal
+  const direction = signal === 'BUY' ? 'LONG' : signal === 'SELL' ? 'SHORT' : null;
+  
+  // If no actionable signal, return early
+  if (!direction) return { signal: 'NEUTRAL' };
+  
+  // Calculate reasonable stop loss (1.5-3% away from entry for liquidation cascades)
+  const stopLossPercent = 1.5 + (Math.random() * 1.5);
+  const stopLoss = direction === 'LONG' 
+    ? currentPrice * (1 - stopLossPercent/100)
+    : currentPrice * (1 + stopLossPercent/100);
+    
+  // Calculate target price (5-10% move for liquidation cascade strategies)
+  const targetPercent = stopLossPercent * (2.5 + Math.random());
+  const targetPrice = direction === 'LONG'
+    ? currentPrice * (1 + targetPercent/100)
+    : currentPrice * (1 - targetPercent/100);
+  
+  // Calculate risk-reward ratio
+  const riskAmount = Math.abs(currentPrice - stopLoss);
+  const rewardAmount = Math.abs(currentPrice - targetPrice);
+  const riskRewardRatio = rewardAmount / riskAmount;
+  
+  // Set initial score based on confidence
+  const confidence = Math.floor(Math.random() * 30) + 65;
+  const score = confidence / 10;
+  
   return {
-    signal: Math.random() > 0.6 ? 'BUY' : Math.random() > 0.7 ? 'SELL' : 'NEUTRAL',
-    confidence: Math.floor(Math.random() * 30) + 65,
-    entryPrice: parseFloat(candles[candles.length - 1].close),
-    targetPrice: 0,
-    stopLoss: 0
+    signal,
+    direction,
+    confidence,
+    score,
+    entryPrice: currentPrice,
+    targetPrice,
+    stopLoss,
+    riskRewardRatio
   };
 }
 
@@ -154,12 +306,50 @@ export function liquidationCascadeStrategy(candles: any[], liquidationData: any,
 export function fundingRateArbitrageStrategy(fundingRates: any[], params: any = {}): any {
   // Implementation of funding rate arbitrage strategy logic would go here
   // This would analyze funding rates for arbitrage opportunities
+  
+  // For funding rate arbitrage, we need current prices
+  const entryPrice = params.currentPrice || 100; // Default fallback
+  
+  // Generate signal type
+  const signalRandom = Math.random();
+  const signal = signalRandom > 0.5 ? 'BUY' : signalRandom > 0.5 ? 'SELL' : 'NEUTRAL';
+  
+  // Set direction based on signal
+  const direction = signal === 'BUY' ? 'LONG' : signal === 'SELL' ? 'SHORT' : null;
+  
+  // If no actionable signal, return early
+  if (!direction) return { signal: 'NEUTRAL' };
+  
+  // Calculate reasonable stop loss (0.5-1% away from entry for arbitrage strategies)
+  const stopLossPercent = 0.5 + (Math.random() * 0.5);
+  const stopLoss = direction === 'LONG' 
+    ? entryPrice * (1 - stopLossPercent/100)
+    : entryPrice * (1 + stopLossPercent/100);
+    
+  // Calculate target price (0.75-1.5% move for arbitrage strategies)
+  const targetPercent = stopLossPercent * (1.2 + Math.random() * 0.6);
+  const targetPrice = direction === 'LONG'
+    ? entryPrice * (1 + targetPercent/100)
+    : entryPrice * (1 - targetPercent/100);
+  
+  // Calculate risk-reward ratio
+  const riskAmount = Math.abs(entryPrice - stopLoss);
+  const rewardAmount = Math.abs(entryPrice - targetPrice);
+  const riskRewardRatio = rewardAmount / riskAmount;
+  
+  // Set initial score based on confidence
+  const confidence = Math.floor(Math.random() * 30) + 65;
+  const score = confidence / 10;
+  
   return {
-    signal: Math.random() > 0.5 ? 'BUY' : Math.random() > 0.5 ? 'SELL' : 'NEUTRAL',
-    confidence: Math.floor(Math.random() * 30) + 65,
-    entryPrice: 0,
-    targetPrice: 0,
-    stopLoss: 0
+    signal,
+    direction,
+    confidence,
+    score,
+    entryPrice,
+    targetPrice,
+    stopLoss,
+    riskRewardRatio
   };
 }
 
