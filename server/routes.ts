@@ -247,6 +247,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Add route for candles with path parameters (used by TechnicalAnalysis component)
+  app.get("/api/binance/candles/:symbol/:timeframe", async (req, res) => {
+    try {
+      const { symbol, timeframe } = req.params;
+      const limit = parseInt(req.query.limit as string || "100");
+      
+      if (!symbol || !timeframe) {
+        return res.status(400).json({ error: "Symbol and timeframe are required" });
+      }
+      
+      const candles = await binanceApi.getCandles(symbol, timeframe, limit);
+      res.json(candles);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   app.get("/api/binance/account", async (req, res) => {
     try {
       // Use real API with testnet credentials
