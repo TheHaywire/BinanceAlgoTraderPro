@@ -551,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (realAccountInfo && realPositions.length > 0) {
         // Calculate real portfolio value from Binance account info
         const availableBalance = parseFloat(realAccountInfo.availableBalance) || 0;
-        const totalUnrealizedProfit = realPositions.reduce((sum, pos) => 
+        const totalUnrealizedProfit = realPositions.reduce((sum: number, pos: any) => 
           sum + parseFloat(pos.unRealizedProfit || '0'), 0);
         
         const portfolioValue = (availableBalance + totalUnrealizedProfit).toFixed(2);
@@ -587,8 +587,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalPnL: totalUnrealizedProfit.toFixed(2),
           totalPnLPercent: ((totalUnrealizedProfit / availableBalance) * 100).toFixed(2),
           totalTrades: realPositions.length,
-          winningTrades: realPositions.filter(p => parseFloat(p.unRealizedProfit) > 0).length,
-          losingTrades: realPositions.filter(p => parseFloat(p.unRealizedProfit) <= 0).length,
+          winningTrades: realPositions.filter((p: any) => parseFloat(p.unRealizedProfit) > 0).length,
+          losingTrades: realPositions.filter((p: any) => parseFloat(p.unRealizedProfit) <= 0).length,
           winRate: 0, // Needs more data
           maxDrawdown: "0.0", // Needs historical data
           sharpeRatio: "0.0" // Needs historical data
@@ -602,25 +602,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Last resort: use mock data
-      console.warn("Using mock performance metrics - no real data available");
+      // Last resort: use a minimal baseline with real-time data
+      console.warn("No performance metrics available - creating baseline metrics");
+      // Try to get positions one more time
+      try {
+        realPositions = await binanceApi.getPositions();
+      } catch (error) {
+        // Ignore errors, we'll handle the case where positions are still empty
+      }
+      
+      // Create baseline performance metrics
       res.json({
-        portfolioValue: "25000.00",
+        portfolioValue: realPositions.length > 0 ? 
+                       realPositions.reduce((sum: number, pos: any) => sum + parseFloat(pos.notional || '0'), 0).toFixed(2) : "0.00",
         portfolioChangePercent: "0.0",
-        dailyPnL: "0.0",
+        dailyPnL: realPositions.length > 0 ? 
+                 realPositions.reduce((sum: number, pos: any) => sum + parseFloat(pos.unRealizedProfit || '0'), 0).toFixed(2) : "0.00",
         dailyPnLPercent: "0.0",
         weeklyPnL: "0.0",
         weeklyPnLPercent: "0.0",
-        totalTrades: 0,
-        winningTrades: 0,
-        losingTrades: 0,
-        winRate: 0,
+        totalTrades: realPositions.length,
+        winningTrades: realPositions.filter((p: any) => parseFloat(p.unRealizedProfit || '0') > 0).length,
+        losingTrades: realPositions.filter((p: any) => parseFloat(p.unRealizedProfit || '0') <= 0).length,
+        winRate: realPositions.length > 0 ? 
+                (realPositions.filter((p: any) => parseFloat(p.unRealizedProfit || '0') > 0).length / realPositions.length * 100).toFixed(0) : 0,
         maxDrawdown: "0.0",
         sharpeRatio: "0.0"
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching performance metrics:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || 'Unknown error' });
     }
   });
   
@@ -641,9 +652,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       riskMetrics.diversificationScore = portfolioAnalyzer.getPortfolioDiversificationScore();
       
       res.json(riskMetrics);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error calculating risk metrics:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || 'Unknown error' });
     }
   });
   
