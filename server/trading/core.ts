@@ -545,60 +545,212 @@ export class TradingCore extends EventEmitter {
   }
   
   private scoreOpportunity(opportunity: TradingOpportunity): number {
+    // Advanced scoring system with multi-factor analysis for high-probability trades
     // Start with the base score
     let score = opportunity.score;
     
-    // Add additional scoring factors
+    // Get multi-timeframe market regimes
+    const regimes = {
+      '15m': this.symbolRegimes.get(`${opportunity.symbol}_15m`) || MarketRegime.NEUTRAL,
+      '1h': this.symbolRegimes.get(`${opportunity.symbol}_1h`) || MarketRegime.NEUTRAL,
+      '4h': this.symbolRegimes.get(`${opportunity.symbol}_4h`) || MarketRegime.NEUTRAL
+    };
     
-    // 1. Risk/reward ratio boost
-    const riskRewardFactor = opportunity.riskRewardRatio >= 2 ? 1.2 : 0.8;
-    score *= riskRewardFactor;
+    // Log initial parameters for debugging
+    console.log(`Scoring opportunity: ${opportunity.symbol} ${opportunity.direction} (${opportunity.strategy})`);
+    console.log(`  - Base score: ${score}`);
+    console.log(`  - Current R:R ratio: ${opportunity.riskRewardRatio}`);
     
-    // 2. Market regime alignment
-    const symbolRegime = this.symbolRegimes.get(`${opportunity.symbol}_4h`) || MarketRegime.NEUTRAL;
-    const regimeAlignment = this.calculateRegimeAlignment(opportunity.strategy, opportunity.direction, symbolRegime);
-    score *= regimeAlignment;
-    
-    // 3. Portfolio correlation factor (avoid too many correlated positions)
-    const correlationPenalty = this.calculatePortfolioCorrelation(opportunity.symbol);
-    score *= (1 - correlationPenalty);
-    
-    // 4. Strategy allocation factor
-    const allocation = this.strategyAllocations.get(opportunity.strategy)?.allocation || 0;
-    const allocationFactor = 0.5 + (allocation / 100) * 0.5; // Scale from 0.5 to 1.0
-    score *= allocationFactor;
-    
-    // 5. Strategy performance factor
-    const performance = this.strategyAllocations.get(opportunity.strategy)?.performance;
-    if (performance && performance.winRate > 0) {
-      const performanceFactor = 0.7 + (performance.winRate / 100) * 0.3; // Scale from 0.7 to 1.0
-      score *= performanceFactor;
+    // 1. Risk/reward ratio boost - exponentially reward higher R:R ratios
+    let riskRewardFactor;
+    if (opportunity.riskRewardRatio >= 3) {
+      riskRewardFactor = 1.5; // Strongly favor trades with excellent R:R
+    } else if (opportunity.riskRewardRatio >= 2) {
+      riskRewardFactor = 1.3; // Good R:R trades get solid boost
+    } else if (opportunity.riskRewardRatio >= 1.5) {
+      riskRewardFactor = 1.1; // Acceptable R:R
+    } else if (opportunity.riskRewardRatio >= 1) {
+      riskRewardFactor = 0.9; // Slightly penalize
+    } else {
+      riskRewardFactor = 0.7; // Heavily penalize poor R:R
     }
     
-    return Math.min(100, Math.round(score)); // Cap at 100
+    score *= riskRewardFactor;
+    console.log(`  - After R:R factor (${riskRewardFactor.toFixed(2)}): ${score.toFixed(2)}`);
+    
+    // 2. Multi-timeframe market regime alignment with weighted importance
+    // Higher timeframes matter more for trade alignment
+    const alignments = {
+      '15m': this.calculateRegimeAlignment(opportunity.strategy, opportunity.direction, regimes['15m']),
+      '1h': this.calculateRegimeAlignment(opportunity.strategy, opportunity.direction, regimes['1h']),
+      '4h': this.calculateRegimeAlignment(opportunity.strategy, opportunity.direction, regimes['4h'])
+    };
+    
+    // Weight the alignments (15m: 20%, 1h: 30%, 4h: 50%)
+    const weightedAlignment = (
+      alignments['15m'] * 0.2 +
+      alignments['1h'] * 0.3 +
+      alignments['4h'] * 0.5
+    );
+    
+    score *= weightedAlignment;
+    console.log(`  - After regime alignment (${weightedAlignment.toFixed(2)}): ${score.toFixed(2)}`);
+    console.log(`    - 15m: ${regimes['15m']} (${alignments['15m'].toFixed(2)})`);
+    console.log(`    - 1h: ${regimes['1h']} (${alignments['1h'].toFixed(2)})`);
+    console.log(`    - 4h: ${regimes['4h']} (${alignments['4h'].toFixed(2)})`);
+    
+    // 3. Portfolio correlation factor - more aggressive penalty for correlated assets
+    const correlationPenalty = this.calculatePortfolioCorrelation(opportunity.symbol);
+    const correlationFactor = Math.max(0.6, 1 - (correlationPenalty * 1.5)); // Stronger penalty with 0.6 floor
+    
+    score *= correlationFactor;
+    console.log(`  - After correlation factor (${correlationFactor.toFixed(2)}): ${score.toFixed(2)}`);
+    
+    // 4. Strategy allocation factor - maintain portfolio balance according to allocations
+    const allocation = this.strategyAllocations.get(opportunity.strategy)?.allocation || 0;
+    const allocationFactor = 0.7 + (allocation / 100) * 0.3; // Scale from 0.7 to 1.0 for less impact
+    
+    score *= allocationFactor;
+    console.log(`  - After allocation factor (${allocationFactor.toFixed(2)}): ${score.toFixed(2)}`);
+    
+    // 5. Strategy performance factor - increasingly favor strategies that are working
+    const performance = this.strategyAllocations.get(opportunity.strategy)?.performance;
+    if (performance && performance.winRate > 0) {
+      // Exponential scaling to strongly favor strategies with proven high win rates
+      // Non-linear scaling gives much higher weight to strategies with >60% win rate
+      let performanceFactor;
+      if (performance.winRate >= 70) {
+        performanceFactor = 1.5; // Exceptional performance
+      } else if (performance.winRate >= 60) {
+        performanceFactor = 1.3; // Strong performance
+      } else if (performance.winRate >= 50) {
+        performanceFactor = 1.1; // Good performance
+      } else {
+        performanceFactor = 0.9; // Below average performance
+      }
+      
+      score *= performanceFactor;
+      console.log(`  - After performance factor (${performanceFactor.toFixed(2)}): ${score.toFixed(2)}`);
+    }
+    
+    // 6. Market volatility check - penalize excessive volatility
+    const volatility = this.calculateHistoricalVolatility(this.candleData.get(opportunity.symbol)?.get('1h') || []);
+    let volatilityFactor = 1.0;
+    
+    if (volatility > 0.03) { // Extreme volatility
+      volatilityFactor = 0.8;
+    } else if (volatility > 0.02) { // High volatility
+      volatilityFactor = 0.9;
+    }
+    
+    score *= volatilityFactor;
+    console.log(`  - After volatility factor (${volatilityFactor.toFixed(2)}): ${score.toFixed(2)}`);
+    
+    // 7. Current position check - reduce score if we already have a position in this asset
+    const hasExistingPosition = this.activePositions.some(p => p.symbol === opportunity.symbol);
+    if (hasExistingPosition) {
+      score *= 0.8; // 20% reduction if we already have a position
+      console.log(`  - After existing position penalty: ${score.toFixed(2)}`);
+    }
+    
+    // Cap and return final score
+    const finalScore = Math.min(100, Math.round(score));
+    console.log(`  - Final capped score: ${finalScore}`);
+    
+    return finalScore;
   }
   
   private calculateRegimeAlignment(strategy: StrategyType, direction: string, regime: MarketRegime): number {
-    // Calculate how well this strategy and direction align with the current market regime
+    // Advanced algorithm to calculate how well a strategy and direction align with current market regime
+    // This enables the system to adapt to changing market conditions and choose optimal strategies
     
-    // Trending regime favors trend following strategies and direction aligned with trend
+    // Sophisticated strategy-regime-direction mapping for optimal execution
+    // Each market regime favors specific strategies and trade directions
+    
+    // TRENDING market regimes
     if (regime === MarketRegime.TRENDING) {
-      if (strategy === 'momentumBreakout') return 1.3;
-      if (strategy === 'meanReversion') return 0.7;
+      // Momentum and breakout strategies excel in trending markets
+      if (strategy === 'momentumBreakout') {
+        // Direction check could incorporate actual trend direction when available
+        return 1.5; // Strong boost for momentum in trending markets
+      }
+      // Mean reversion strategies struggle in strongly trending markets
+      if (strategy === 'meanReversion') {
+        return 0.6; // Significant penalty for counter-trend strategies
+      }
+      // Volatility strategies can work in trending markets with increasing volatility
+      if (strategy === 'volatilityExpansion') {
+        return 1.1; // Modest boost
+      }
+      // Liquidation cascades often happen in trending markets (especially downtrends)
+      if (strategy === 'liquidationCascade') {
+        return direction === 'SHORT' ? 1.2 : 0.9; // Better for shorts
+      }
+      // Funding rate strategies less effective in trending markets
+      if (strategy === 'fundingRateArbitrage') {
+        return 0.8; // Mild penalty
+      }
     }
     
-    // Ranging regime favors mean reversion strategies
+    // RANGING market regimes
     else if (regime === MarketRegime.RANGING) {
-      if (strategy === 'meanReversion') return 1.3;
-      if (strategy === 'momentumBreakout') return 0.7;
+      // Mean reversion strategies thrive in ranging markets
+      if (strategy === 'meanReversion') {
+        return 1.6; // Strong boost for mean reversion in ranging markets
+      }
+      // Momentum strategies struggle in ranging markets
+      if (strategy === 'momentumBreakout') {
+        return 0.7; // Significant penalty
+      }
+      // Funding rate strategies work well in stable, ranging markets
+      if (strategy === 'fundingRateArbitrage') {
+        return 1.4; // Good boost
+      }
+      // Volatility strategies less effective in low-volatility ranging markets
+      if (strategy === 'volatilityExpansion') {
+        return 0.8; // Penalty
+      }
+      // Liquidation cascades rare in range-bound markets
+      if (strategy === 'liquidationCascade') {
+        return 0.6; // Significant penalty
+      }
     }
     
-    // Volatile regime favors volatility expansion and liquidation cascade strategies
+    // VOLATILE market regimes
     else if (regime === MarketRegime.VOLATILE) {
-      if (strategy === 'volatilityExpansion' || strategy === 'liquidationCascade') return 1.3;
+      // Volatility expansion strategies excel in volatile markets
+      if (strategy === 'volatilityExpansion') {
+        return 1.7; // Strong boost
+      }
+      // Liquidation cascade strategies can work well in volatile markets
+      if (strategy === 'liquidationCascade') {
+        return 1.5; // Good boost
+      }
+      // Momentum can work but risky due to false breakouts
+      if (strategy === 'momentumBreakout') {
+        return 1.1; // Slight boost
+      }
+      // Mean reversion can work but needs careful execution
+      if (strategy === 'meanReversion') {
+        return 1.0; // Neutral
+      }
+      // Funding rate strategies risky in volatile markets
+      if (strategy === 'fundingRateArbitrage') {
+        return 0.7; // Penalty
+      }
     }
     
-    // Default
+    // NEUTRAL market regimes
+    else if (regime === MarketRegime.NEUTRAL) {
+      // Balanced approach for neutral markets
+      if (strategy === 'momentumBreakout') return 1.0;
+      if (strategy === 'meanReversion') return 1.0;
+      if (strategy === 'volatilityExpansion') return 0.9;
+      if (strategy === 'liquidationCascade') return 0.8;
+      if (strategy === 'fundingRateArbitrage') return 1.2; // Works well in neutral markets
+    }
+    
+    // Default alignment factor if no specific rule applies
     return 1.0;
   }
   

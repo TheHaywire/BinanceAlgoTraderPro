@@ -1,12 +1,33 @@
 import { MAX_POSITIONS, MAX_RISK_EXPOSURE } from '../../client/src/lib/constants';
 
 export class RiskManager {
-  private maxPositionSize: number = 5000; // USDT
-  private maxDrawdownLimit: number = 15; // Percentage
+  // Conservative risk parameters for long-term capital preservation and growth
+  private maxPositionSize: number = 3000; // USDT - reduced from 5000 for better per-position risk control
+  private maxDrawdownLimit: number = 10; // Percentage - reduced from 15% for tighter risk control
   private maxPositions: number = MAX_POSITIONS;
-  private maxRiskPerTrade: number = 1; // Percentage of account
-  private maxLeverage: number = 25;
+  private maxRiskPerTrade: number = 0.75; // Percentage of account - reduced from 1% for safer position sizing
+  private maxLeverage: number = 10; // Reduced from 25 for significantly lower liquidation risk
   private totalAccountValue: number = 25000; // USDT (simulated)
+  
+  // Advanced risk parameters
+  private maxDailyDrawdown: number = 2.5; // Maximum daily drawdown percentage
+  private minRiskRewardRatio: number = 2.0; // Minimum R:R ratio for trade acceptance
+  private correlationLimit: number = 0.7; // Maximum correlation between positions
+  private volatilityMultiplier: Record<string, number> = {
+    'HIGH': 0.5,    // Use only 50% of standard position size for high volatility
+    'MEDIUM': 0.8,  // Use 80% of standard position size for medium volatility
+    'LOW': 1.0      // Use full position size for low volatility
+  }
+  private marketCapRiskAdjustment: Record<string, number> = {
+    'LARGE': 1.0,   // Full position sizing for large market cap (lower risk)
+    'MEDIUM': 0.8,  // 80% position sizing for medium market cap
+    'SMALL': 0.6    // 60% position sizing for small market cap (higher risk)
+  }
+  
+  // Performance tracking
+  private peakAccountValue: number = 25000; // Track high water mark
+  private dailyPeakValue: number = 25000;   // Track daily high water mark
+  private dailyStartValue: number = 25000;  // Start of day value
   
   // Add getters for private properties
   public getMaxPositions(): number { return this.maxPositions; }
@@ -197,43 +218,128 @@ export class RiskManager {
   
   /**
    * Validates if a trading opportunity meets risk criteria
+   * Implements comprehensive risk assessment for high-probability trades
    */
-  validateForExecution(opportunity: any): { approved: boolean; reason?: string } {
-    // Check if opportunity has required fields
+  validateForExecution(opportunity: any): { approved: boolean; reason?: string; details?: any } {
+    const detailedChecks: { [key: string]: { passed: boolean; details: string } } = {};
+    let validationLog = [];
+    
+    // 1. Basic field validation
     if (!opportunity.symbol || !opportunity.direction || !opportunity.entryPrice || !opportunity.stopLoss) {
-      return { approved: false, reason: 'Invalid opportunity data' };
+      return { approved: false, reason: 'Invalid opportunity data: missing required fields' };
     }
     
-    // Ensure direction is valid
+    validationLog.push('✓ Basic field validation passed');
+    detailedChecks['basicFields'] = { passed: true, details: 'All required fields present' };
+    
+    // 2. Trade direction validation
     if (opportunity.direction !== 'LONG' && opportunity.direction !== 'SHORT') {
-      return { approved: false, reason: 'Invalid direction' };
+      return { approved: false, reason: 'Invalid direction: must be LONG or SHORT' };
     }
     
-    // Validate risk-reward ratio
+    validationLog.push('✓ Direction validation passed');
+    detailedChecks['direction'] = { passed: true, details: `Direction: ${opportunity.direction}` };
+    
+    // 3. Price data validation
     const entryPrice = parseFloat(opportunity.entryPrice);
     const stopLoss = parseFloat(opportunity.stopLoss);
     const targetPrice = parseFloat(opportunity.targetPrice);
     
-    if (entryPrice <= 0 || stopLoss <= 0) {
-      return { approved: false, reason: 'Invalid price data' };
+    if (entryPrice <= 0 || stopLoss <= 0 || targetPrice <= 0) {
+      return { approved: false, reason: 'Invalid price data: prices must be positive numbers' };
     }
     
-    // Calculate risk-reward ratio for validation
+    // Verify stop loss direction is correct based on trade direction
+    if ((opportunity.direction === 'LONG' && stopLoss >= entryPrice) || 
+        (opportunity.direction === 'SHORT' && stopLoss <= entryPrice)) {
+      return { 
+        approved: false, 
+        reason: 'Invalid stop loss placement: stop loss must be below entry for LONG trades and above entry for SHORT trades' 
+      };
+    }
+    
+    // Verify target price direction is correct based on trade direction
+    if ((opportunity.direction === 'LONG' && targetPrice <= entryPrice) || 
+        (opportunity.direction === 'SHORT' && targetPrice >= entryPrice)) {
+      return { 
+        approved: false, 
+        reason: 'Invalid target price placement: target must be above entry for LONG trades and below entry for SHORT trades' 
+      };
+    }
+    
+    validationLog.push('✓ Price data validation passed');
+    detailedChecks['priceData'] = { 
+      passed: true, 
+      details: `Entry: ${entryPrice}, Stop: ${stopLoss}, Target: ${targetPrice}` 
+    };
+    
+    // 4. Calculate and validate risk-reward ratio
     const riskAmount = Math.abs(entryPrice - stopLoss);
     const rewardAmount = Math.abs(targetPrice - entryPrice);
     const calculatedRR = rewardAmount / riskAmount;
     
-    if (calculatedRR < 1.5) {
-      return { approved: false, reason: 'Risk-reward ratio too low' };
+    // Must meet minimum R:R ratio requirement
+    if (calculatedRR < this.minRiskRewardRatio) {
+      return { 
+        approved: false, 
+        reason: `Risk-reward ratio (${calculatedRR.toFixed(2)}) below minimum required (${this.minRiskRewardRatio})`,
+        details: detailedChecks
+      };
     }
     
-    // Check confidence score
-    if (opportunity.confidence < 60) {
-      return { approved: false, reason: 'Confidence score too low' };
+    validationLog.push(`✓ Risk-Reward validation passed: ${calculatedRR.toFixed(2)}:1`);
+    detailedChecks['riskReward'] = { 
+      passed: true, 
+      details: `R:R Ratio: ${calculatedRR.toFixed(2)}:1 (risk: ${riskAmount.toFixed(4)}, reward: ${rewardAmount.toFixed(4)})` 
+    };
+    
+    // 5. Confidence score validation
+    if (opportunity.score < 75) { // Using opportunity score instead of just confidence
+      return { 
+        approved: false, 
+        reason: `Opportunity score (${opportunity.score}) below required threshold (75)`,
+        details: detailedChecks
+      };
     }
+    
+    validationLog.push(`✓ Score validation passed: ${opportunity.score}`);
+    detailedChecks['score'] = { passed: true, details: `Score: ${opportunity.score}/100` };
+    
+    // 6. Stop loss percentage check - prevent excessively tight or wide stops
+    const stopLossPercentage = (Math.abs(entryPrice - stopLoss) / entryPrice) * 100;
+    
+    if (stopLossPercentage < 0.5) {
+      return { 
+        approved: false, 
+        reason: `Stop loss too tight (${stopLossPercentage.toFixed(2)}% from entry)`,
+        details: detailedChecks
+      };
+    }
+    
+    if (stopLossPercentage > 5) {
+      return { 
+        approved: false, 
+        reason: `Stop loss too wide (${stopLossPercentage.toFixed(2)}% from entry)`,
+        details: detailedChecks
+      };
+    }
+    
+    validationLog.push(`✓ Stop loss percentage validation passed: ${stopLossPercentage.toFixed(2)}%`);
+    detailedChecks['stopLoss'] = { 
+      passed: true, 
+      details: `Stop loss ${stopLossPercentage.toFixed(2)}% from entry` 
+    };
+    
+    // 7. Log detailed validation results
+    console.log(`Trade validation for ${opportunity.symbol} ${opportunity.direction} at ${entryPrice}:`);
+    validationLog.forEach(log => console.log(log));
+    console.log(`APPROVED: ${opportunity.symbol} ${opportunity.direction} with score ${opportunity.score} and R:R ${calculatedRR.toFixed(2)}:1`);
     
     // All checks passed
-    return { approved: true };
+    return { 
+      approved: true,
+      details: detailedChecks 
+    };
   }
   
   /**
