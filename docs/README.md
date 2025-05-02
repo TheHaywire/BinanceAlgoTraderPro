@@ -1,6 +1,8 @@
 # AlgoTrader Documentation
-
 This documentation provides an overview of the AlgoTrader application, its architecture, features, and how to use it.
+
+<img width="1438" alt="Screenshot 2025-05-03 at 1 00 56 AM" src="https://github.com/user-attachments/assets/e8ba6fd2-ef25-4d77-b83a-8db476d35c1c" />
+
 
 ## Table of Contents
 
