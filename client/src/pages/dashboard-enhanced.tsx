@@ -7,7 +7,7 @@ import PerformanceMetrics from "@/components/dashboard/PerformanceMetrics";
 import RiskManagementBar from "@/components/dashboard/RiskManagementBar";
 import PortfolioDiversification from "@/components/dashboard/PortfolioDiversification";
 import LogViewer from "@/components/system/LogViewer";
-import TechnicalAnalysis from "@/components/dashboard/TechnicalAnalysis";
+import TechnicalAnalysis from "@/components/dashboard/TechnicalAnalysisSimple";
 import StrategyAnalyzer from "@/components/dashboard/StrategyAnalyzer";
 import ParticleBackground from "@/components/ui/ParticleBackground";
 import GlowingCard from "@/components/ui/GlowingCard";
