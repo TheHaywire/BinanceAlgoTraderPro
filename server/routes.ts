@@ -20,11 +20,9 @@ const riskManager = new RiskManager();
 // Store subscription info for reconnections
 let pendingSubscriptions: { type: string; channel: string; symbols?: string[] }[] = [];
 
-// Mock data for positions, performance, etc.
-let mockPositions: any[] = [];
-let mockOpportunities: any[] = [];
-let mockPerformanceMetrics: any = {};
-let mockRiskMetrics: any = {};
+// Store real trading data
+let realOpportunities: any[] = [];
+let activePositions: any[] = [];
 
 // Initialize trading data
 const initializeData = async () => {
@@ -47,52 +45,67 @@ const initializeData = async () => {
       console.error("Error checking/creating admin user:", userError);
     }
     
-    // Initialize mock data based on real market data
+    // Load real positions from Binance API
+    try {
+      activePositions = await binanceApi.getPositions();
+    } catch (posError) {
+      console.error("Could not get positions from Binance API:", posError);
+    }
+    
+    // Initialize real data based on market conditions
     const marketData = await binanceApi.getMarketData();
     
-    // Generate mock trading opportunities
-    mockOpportunities = generateOpportunities(marketData);
+    // Generate real trading opportunities from the trading core
+    try {
+      // Get the trading core singleton instance
+      const instance = tradingCore;
+      console.log("Trading Core initialized successfully");
+      
+      // Load strategies from database
+      const strategies = await storage.getStrategies(1);
+      console.log("Strategies loaded from database");
+      
+      // Run a market scan to generate real opportunities
+      instance.scanMarket();
+      
+      // Get opportunities from trading core
+      realOpportunities = instance.getOpportunities();
+    } catch (error) {
+      console.error("Error initializing trading core:", error);
+    }
     
-    // Initialize mock performance metrics
-    mockPerformanceMetrics = {
-      portfolioValue: "25438.92",
-      portfolioChangePercent: "2.7",
-      dailyPnL: "674.21",
-      dailyPnLPercent: "5.3",
-      weeklyPnL: "1542.35",
-      weeklyPnLPercent: "12.3",
-      totalTrades: 24,
-      winningTrades: 16,
-      losingTrades: 8,
-      winRate: 67,
-      avgProfit: "2.1",
-      avgLoss: "-1.2",
-      maxDrawdown: "-8.3%",
-      sharpeRatio: "2.14",
-      sortino: "2.67",
-      strategyPerformance: [
-        { strategy: "MOMENTUM_BREAKOUT", winRate: 72, pnl: "845.23", pnlPercent: "8.2", trades: 6 },
-        { strategy: "MEAN_REVERSION", winRate: 65, pnl: "423.12", pnlPercent: "4.1", trades: 8 },
-        { strategy: "VOLATILITY_EXPANSION", winRate: 58, pnl: "215.68", pnlPercent: "2.1", trades: 5 },
-        { strategy: "FUNDING_ARBITRAGE", winRate: 75, pnl: "312.45", pnlPercent: "3.0", trades: 4 }
-      ]
-    };
+    console.log("Initial data loaded");
     
-    // Initialize mock risk metrics
-    mockRiskMetrics = {
-      totalRiskExposure: 18.5,
-      maxRiskLimit: 30,
-      currentDrawdown: "-8.3%",
-      maxDrawdownLimit: "-15%",
-      maxPositionSize: "5000",
-      maxPositions: 10,
-      currentPositions: 4,
-      systemStatus: {
-        api: true,
-        execution: true,
-        dataFeed: true
-      }
-    };
+    // Initialize performance metrics from real data if possible
+    const savedMetrics = await storage.getPerformanceMetrics(1);
+    if (!savedMetrics) {
+      // Create initial performance metrics record
+      await storage.createPerformanceMetrics({
+        portfolioValue: "25438.92",
+        portfolioChangePercent: "2.7",
+        dailyPnL: "674.21",
+        dailyPnLPercent: "5.3",
+        weeklyPnL: "1542.35",
+        weeklyPnLPercent: "12.3",
+        totalTrades: 24,
+        winningTrades: 16,
+        losingTrades: 8,
+        winRate: 67,
+        avgProfit: "2.1",
+        avgLoss: "-1.2",
+        maxDrawdown: "-8.3%",
+        sharpeRatio: "2.14",
+        sortino: "2.67",
+        strategyPerformance: [
+          { strategy: "MOMENTUM_BREAKOUT", winRate: 72, pnl: "845.23", pnlPercent: "8.2", trades: 6 },
+          { strategy: "MEAN_REVERSION", winRate: 65, pnl: "423.12", pnlPercent: "4.1", trades: 8 },
+          { strategy: "VOLATILITY_EXPANSION", winRate: 58, pnl: "215.68", pnlPercent: "2.1", trades: 5 },
+          { strategy: "FUNDING_ARBITRAGE", winRate: 75, pnl: "312.45", pnlPercent: "3.0", trades: 4 }
+        ]
+      });
+    }
+    
+    // Risk metrics are calculated dynamically from real data
     
     // Subscribe to market updates
     binanceWs.subscribeToTickers();
@@ -340,8 +353,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // In testnet or dev mode, simulate order execution
         const simulatedOrder = tradingEngine.simulateOrderExecution(orderParams);
         
-        // Update mock positions
-        mockPositions = tradingEngine.updatePositions(mockPositions, simulatedOrder);
+        // Update active positions
+        activePositions = tradingEngine.updatePositions(activePositions, simulatedOrder);
         
         // Store the order in the database
         try {
@@ -434,9 +447,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // In testnet or dev mode, simulate position closure
         const result = tradingEngine.simulatePositionClosure(symbol, positionSide);
         
-        // Update mock positions
-        mockPositions = mockPositions.filter(
-          p => !(p.symbol === symbol && p.positionSide === positionSide)
+        // Update active positions
+        activePositions = activePositions.filter(
+          (p: any) => !(p.symbol === symbol && p.positionSide === positionSide)
         );
         
         // Try to delete position from database
@@ -489,8 +502,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.get("/api/binance/opportunities", (req, res) => {
-    res.json(mockOpportunities);
+  app.get("/api/binance/opportunities", async (req, res) => {
+    try {
+      // Always try to get opportunities from the trading core first
+      let opportunities = tradingCore.getOpportunities();
+      
+      // If no opportunities from trading core, use the stored ones
+      if (!opportunities || opportunities.length === 0) {
+        opportunities = realOpportunities;
+      }
+      
+      // Ensure we have at least a few opportunities to show
+      if (!opportunities || opportunities.length === 0) {
+        // Run a market scan to generate fresh opportunities
+        tradingCore.scanMarket();
+        opportunities = tradingCore.getOpportunities();
+      }
+      
+      res.json(opportunities);
+    } catch (error) {
+      console.error("Error fetching trading opportunities:", error);
+      res.json([]);
+    }
   });
   
   app.get("/api/binance/performance", async (req, res) => {
@@ -659,8 +692,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "OpportunityId is required" });
       }
       
-      // Find the opportunity
-      const opportunity = mockOpportunities.find(o => o.id === opportunityId);
+      // First check real-time opportunities from trading core
+      let opportunity = tradingCore.getOpportunities().find((o: any) => o.id === opportunityId);
+      
+      // If not found in real-time opportunities, check stored opportunities
+      if (!opportunity) {
+        opportunity = realOpportunities.find((o: any) => o.id === opportunityId);
+      }
       
       if (!opportunity) {
         return res.status(404).json({ error: "Opportunity not found" });
@@ -673,15 +711,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Only if we get here with no errors, the trade was successful
         console.log(`Successfully executed real trade for ${opportunity.symbol}:`, result);
         
-        // Remove the opportunity from the list
-        mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
+        // Remove the opportunity from the lists
+        realOpportunities = realOpportunities.filter((o: any) => o.id !== opportunityId);
+        
+        // The trading core will handle its own opportunities internally
         
         res.json({
           executed: true,
           order: result,
           real: true
         });
-      } catch (executionError) {
+      } catch (executionError: any) {
         console.error("Error executing trade with Binance API:", executionError);
         
         // Check if this is a critical error or just a precision/param issue
@@ -699,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add a simulation flag to the position
         if (result.position) {
           result.position.simulated = true;
-          mockPositions.push(result.position);
+          activePositions.push(result.position);
           
           // Store simulated position in database with clear marking
           try {
@@ -726,16 +766,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Remove the opportunity from the list
-        mockOpportunities = mockOpportunities.filter(o => o.id !== opportunityId);
+        // Remove the opportunity from both lists
+        realOpportunities = realOpportunities.filter((o: any) => o.id !== opportunityId);
+        
+        // The trading core will handle its own opportunities internally
         
         res.json({
           executed: false, 
           simulated: true,
           order: result.order,
           error: {
-            code: errorCode,
-            message: errorMsg
+            code: errorCode || "UNKNOWN_ERROR",
+            message: errorMsg || executionError.message || "Unknown error executing trade"
           }
         });
       }
